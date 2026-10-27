@@ -1,0 +1,1 @@
+Preserve the existing local implementation after project review. All 189 offline tests, Ruff lint and formatting, and Mypy passed. A fake ten-round match completed with scores 30/30. Architecture decisions and evidence are in docs/decisions and docs/development.
