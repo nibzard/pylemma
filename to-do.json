@@ -1,0 +1,532 @@
+{
+  "schema_version": 1,
+  "source_files": [
+    "SPEC.md"
+  ],
+  "goal": "Release pylemma, a small trust game with ten-round matches against deterministic opponents, real model decisions, stored replays, reviewed public Logfire traces, bounded hosted operation, and a local Logfire example. Complete all six development rounds and the release criteria in SPEC.md.",
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "Establish an installable project with offline checks",
+      "priority": 1,
+      "status": "done",
+      "details": "Implement SPEC.md sections 3, 7, 16, and phase 0. Create AGENTS.md, a minimal Python package, pyproject.toml, locked dependencies, and installation instructions. Define executable test, formatting, and type-check commands. Document context boundaries and the term list in docs/architecture.md. Verify installation and offline checks from a clean environment. Require factual development records, relevant tests, updated documentation, and simplicity reviews for every implementation task. Create documents only when their phase starts.",
+      "files": [
+        ".gitignore",
+        "AGENTS.md",
+        "README.md",
+        "docs/architecture.md",
+        "docs/development/2026-10-27-project-foundation.md",
+        "pyproject.toml",
+        "src/pylemma/__init__.py",
+        "tests/test_package.py",
+        "uv.lock"
+      ],
+      "tags": [
+        "development-round:0"
+      ],
+      "updated_at": "2026-10-26T23:33:18Z"
+    },
+    {
+      "id": "T002",
+      "title": "Implement the game contracts and deterministic rules",
+      "priority": 2,
+      "status": "done",
+      "details": "Implement sections 4, 5, 7.1, and 8. Define strict choices, bounded decisions, immutable settings, outcomes, and legal state transitions. Implement pd-v1 scoring and all three versioned opponent policies with fixed branch explanations. Keep game code independent of transport, storage, provider, and telemetry libraries. Test every scoring entry, policy branch, boundary round, score total, draw, round-order rule, and terminal-state invariant.",
+      "depends_on": [
+        "T001"
+      ],
+      "files": [
+        "README.md",
+        "docs/architecture.md",
+        "docs/development/2026-10-27-game-contracts.md",
+        "pyproject.toml",
+        "src/pylemma/game/__init__.py",
+        "src/pylemma/game/models.py",
+        "src/pylemma/game/opponents.py",
+        "src/pylemma/game/rules.py",
+        "tests/unit/test_game.py",
+        "uv.lock"
+      ],
+      "tags": [
+        "development-round:1"
+      ],
+      "updated_at": "2026-10-26T23:39:35Z"
+    },
+    {
+      "id": "T003",
+      "title": "Persist matches and expose replay data",
+      "priority": 2,
+      "status": "done",
+      "details": "Implement sections 8 and 9 using SQLite and ordered SQL migrations. Store required settings, observations, outcomes, attempts, timestamps, and trace references. Represent unknown usage and cost as null. Enforce unique round numbers and atomic outcome/progress commits. Use short transactions outside model requests. Reconstruct totals from stored outcomes. Provide replay reads without a browser or model calls. Document the storage decision and verify migrations, rollback, duplicate-round rejection, and replay consistency.",
+      "depends_on": [
+        "T002"
+      ],
+      "files": [
+        ".gitignore",
+        "README.md",
+        "docs/architecture.md",
+        "docs/decisions/001-sqlite-match-records.md",
+        "docs/development/2026-10-27-match-records.md",
+        "src/pylemma/records/__init__.py",
+        "src/pylemma/records/migrations/001_matches.sql",
+        "src/pylemma/records/migrations/002_attempts.sql",
+        "src/pylemma/records/models.py",
+        "src/pylemma/records/sqlite.py",
+        "tests/integration/test_records.py"
+      ],
+      "tags": [
+        "development-round:1"
+      ],
+      "updated_at": "2026-10-26T23:47:28Z"
+    },
+    {
+      "id": "T004",
+      "title": "Prove ten-round execution with a fake player",
+      "priority": 2,
+      "status": "done",
+      "details": "Implement the application runner and fake player boundary. Build both observations before computing current decisions. Exclude current opponent choices and all stated reasons from player history. Opponents receive completed history without the visitor strategy. Reveal only committed outcomes. Failed rounds add no points, and partial matches have no winner. Verify reference totals of 30/30, 10/10, 50/0, 21/36, and 14/9. Record passing domain and persistence checks as the round 1 exit evidence.",
+      "depends_on": [
+        "T002",
+        "T003"
+      ],
+      "files": [
+        "README.md",
+        "docs/architecture.md",
+        "docs/development/2026-10-27-fake-runner.md",
+        "pyproject.toml",
+        "src/pylemma/application/__init__.py",
+        "src/pylemma/application/runner.py",
+        "src/pylemma/player/__init__.py",
+        "src/pylemma/player/service.py",
+        "tests/integration/test_runner.py"
+      ],
+      "tags": [
+        "development-round:1"
+      ],
+      "updated_at": "2026-10-26T23:51:46Z"
+    },
+    {
+      "id": "T005",
+      "title": "Implement one bounded model adapter",
+      "priority": 3,
+      "status": "done",
+      "details": "Implement sections 9.3, 10, and 15.5 with Pydantic AI. Select one provider and pin a supported model identifier using documented cost and structured-output evidence. Separate system rules from visitor strategy. Provide no model tools. Validate trimmed reasons of 1–240 characters and reject unknown fields. Enforce two requests per round across repair, transport, and SDK retries. Do not retry authentication or exhausted-budget errors. Record attempts, actual parameters, usage, estimated costs, and estimation basis. Add opt-in evaluation commands with bounded spending. Verify behavior offline and record model and retry decisions.\n\nReview repair: Match settings can disagree with actual model execution\nRound 2: Validate the stored provider, model, parameters, and system prompt version against the selected adapter before execution. Reject incompatible settings before issuing requests. Add boundary tests that prove completed records describe actual execution.\nEvidence: An offline MockTransport workflow completed ten rounds with scores 30/30. Stored settings named different-model, max_completion_tokens=1, and different-system. Actual requests used gpt-6-luna and max_completion_tokens=256. The inconsistent replay read back successfully. application/runner.py does not compare settings with player/model.py constants.",
+      "depends_on": [
+        "T004"
+      ],
+      "files": [
+        ".gitignore",
+        "README.md",
+        "docs/architecture.md",
+        "docs/decisions/002-model-and-retry-limits.md",
+        "docs/development/2026-10-27-bounded-model.md",
+        "pyproject.toml",
+        "src/pylemma/application/runner.py",
+        "src/pylemma/evaluate.py",
+        "src/pylemma/player/model.py",
+        "src/pylemma/player/service.py",
+        "src/pylemma/records/models.py",
+        "tests/integration/test_model.py",
+        "tests/integration/test_runner.py",
+        "uv.lock"
+      ],
+      "tags": [
+        "development-round:2",
+        "looper:finding:match-execution-settings-consistency"
+      ],
+      "updated_at": "2026-10-27T00:07:21Z"
+    },
+    {
+      "id": "T006",
+      "title": "Instrument execution and prepare reviewed trace sharing",
+      "priority": 3,
+      "status": "done",
+      "details": "Implement section 11 trace scopes, attributes, stored references, and safe export failures. Include permitted model inputs, structured outputs, retries, policy branches, durations, scores, and available usage. Exclude credentials, source identifiers, access metadata, and unrelated request headers. Add an operator CLI to record or remove reviewed HTTPS links using an explicit Logfire host allowlist. Add executable trace checks and a full-trace review procedure. Prepare a public-access decision record covering plan limits, retention, supported sharing capabilities, and unverified questions. Do not infer an automatic sharing endpoint.\n\nReview repair: Match tracing and reviewed-link management remain unimplemented\nRound 2: Implement the required trace hierarchy, safe attributes, stored references, export-failure handling, and reviewed-link CLI. Prepare executable checks and the public-access decision record.\nEvidence: application/runner.py contains no tracing scopes. The source inventory contains no telemetry module or reviewed-link CLI. README.md explicitly states that Logfire integration is unavailable.",
+      "depends_on": [
+        "T005"
+      ],
+      "files": [
+        ".gitignore",
+        "README.md",
+        "docs/architecture.md",
+        "docs/decisions/003-public-trace-access.md",
+        "docs/development/2026-10-27-match-tracing.md",
+        "docs/runbooks/trace-review.md",
+        "pyproject.toml",
+        "src/pylemma/application/runner.py",
+        "src/pylemma/cli.py",
+        "src/pylemma/player/model.py",
+        "src/pylemma/records/links.py",
+        "src/pylemma/records/sqlite.py",
+        "src/pylemma/telemetry.py",
+        "tests/integration/test_telemetry.py",
+        "uv.lock"
+      ],
+      "tags": [
+        "development-round:2",
+        "looper:finding:match-tracing-and-reviewed-link-management"
+      ],
+      "updated_at": "2026-10-27T00:16:39Z"
+    },
+    {
+      "id": "T007",
+      "title": "Provide credentials and a bounded live-test allowance",
+      "priority": 3,
+      "status": "blocked",
+      "details": "External prerequisite for paid integration checks. Configure secrets outside the repository. Confirm access to the selected model and the Logfire project. The repository supplies no credentials or spending authorization. Local adapter, instrumentation, and review preparation remain autonomous tasks.",
+      "depends_on": [
+        "T005",
+        "T006"
+      ],
+      "blockers": [
+        "An operator must complete this prerequisite; coding workers cannot execute it."
+      ],
+      "tags": [
+        "development-round:2",
+        "looper:finding:live-integration-prerequisites",
+        "looper:operator"
+      ],
+      "unblock_when": "Record evidence that the operator completed the action, then mark this task done. To delegate different work, explicitly change its contract and remove looper:operator."
+    },
+    {
+      "id": "T008",
+      "title": "Verify a complete real match and review its trace",
+      "priority": 3,
+      "status": "todo",
+      "details": "Run one real, low-cost match within the approved allowance. Verify ten resolved rounds, actual model requests, and matching stored trace identifiers. Review every attribute against the public-record notice before publication. Record actual commands, costs, outcomes, plan settings, and any missing telemetry. Prepare exact supported-UI instructions for sharing, revocation, and replacement. Passing offline tests alone does not satisfy this task.\n\nReview repair: A complete real match and trace still need verification\nRound 2: Run a bounded real match after T007. Verify ten resolved rounds, actual requests, matching stored trace identifiers, costs, and every exported attribute. Prepare sharing instructions without publishing.\nEvidence: tests/integration/test_model.py uses MockTransport. The development record states that no paid request or telemetry export ran. T008 remains unfinished.\n\nReview repair: Verify a real match and review its complete trace\nRound 2: after T007, verify actual exports, stored identifiers, costs, account settings, and every trace attribute.\nEvidence: Executable offline checks and the full-trace review procedure are ready. Live verification remains outstanding.\n\nReview repair: Verify a real match and its exported trace\nRound 2: Complete ten real rounds within the authorized allowance. Verify stored references, exported requests, costs, account settings, and every trace attribute. Prepare sharing instructions without publishing.\nEvidence: The passing integration tests use mock provider responses and an in-memory exporter. docs/decisions/003-public-trace-access.md marks live contents and account settings unverified.",
+      "depends_on": [
+        "T006",
+        "T007"
+      ],
+      "tags": [
+        "development-round:2",
+        "looper:finding:real-match-trace-verification"
+      ]
+    },
+    {
+      "id": "T009",
+      "title": "Authorize public sharing and verify signed-out trace access",
+      "priority": 3,
+      "status": "blocked",
+      "details": "Create a public trace link through the supported UI. Verify complete signed-out access, revoke the link, and verify loss of public access. Create and verify a fresh reviewed link afterward. Store that link using the CLI. Record deployed results and applicable plan settings in the public-access decision record. This is the round 2 exit gate and must pass before visual polish or round 3 acceptance.",
+      "depends_on": [
+        "T008"
+      ],
+      "blockers": [
+        "An operator must complete this prerequisite; coding workers cannot execute it."
+      ],
+      "tags": [
+        "development-round:2",
+        "looper:finding:featured-trace-public-access",
+        "looper:operator"
+      ],
+      "unblock_when": "Record evidence that the operator completed the action, then mark this task done. To delegate different work, explicitly change its contract and remove looper:operator."
+    },
+    {
+      "id": "T010",
+      "title": "Implement match creation and progress endpoints",
+      "priority": 4,
+      "status": "blocked",
+      "details": "Implement section 12 with FastAPI and same-origin assets. Provide configuration, match creation, stored progress, replay routes, and safe health endpoints. Validate strategy length, opponent, current notice, acknowledgement, and optional existing parent. Use identifiers and idempotency keys with at least 128 bits of entropy. Persist acceptance before returning 202. Return specified 409, 422, 429, and 503 responses. Apply available execution limits without an unlimited queue. Serve only committed outcomes and safe error categories. Readiness performs no paid requests. Do not expose a visitor-match directory.",
+      "depends_on": [
+        "T004",
+        "T005",
+        "T009"
+      ],
+      "blockers": [
+        "Deferred: Resume when T009 passes the round 2 public-trace gate."
+      ],
+      "tags": [
+        "development-round:3",
+        "looper:deferred",
+        "looper:finding:visitor-match-http-workflow"
+      ],
+      "unblock_when": "Resume when T009 passes the round 2 public-trace gate.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T011",
+      "title": "Build the complete play, replay, and rematch interface",
+      "priority": 4,
+      "status": "blocked",
+      "details": "Implement section 6 with the strategy field, three presets, three explained opponents, compact score matrix, acknowledgement, and Play ten rounds control. Presets only fill the field. Show waiting states, simultaneous committed choices, scores, timeline, and round details. Poll active matches once per second, reduce hidden-page polling, and stop at terminal states. Preserve progress across reloads. Render all supplied text as plain text. Show factual summaries, cooperation counts, combined score, copy link, and rematch controls. Distinguish own-match traces from named examples. Use verified span links only. Show partial failures honestly and explain interpretation limits.",
+      "depends_on": [
+        "T010"
+      ],
+      "blockers": [
+        "Deferred: Resume when T010 provides the required endpoints."
+      ],
+      "tags": [
+        "development-round:3",
+        "looper:deferred",
+        "looper:finding:visitor-play-replay-rematch"
+      ],
+      "unblock_when": "Resume when T010 provides the required endpoints.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T012",
+      "title": "Verify that visitors can play without setup instructions",
+      "priority": 4,
+      "status": "blocked",
+      "details": "Execute section 15.4 checks for keyboard operation, visible focus, contrast, choice labels, reduced motion, and layouts at 375-pixel and desktop widths. Exercise slow requests, failed requests, reloads during execution, completed replays, and rematches. Verify HTML-like input remains text. Confirm examples and own-match Logfire links are distinguishable. Record evidence that a visitor can complete and understand a match without setup instructions. This is the round 3 exit gate.",
+      "depends_on": [
+        "T011"
+      ],
+      "blockers": [
+        "Deferred: Resume when T011 provides the complete visitor interface."
+      ],
+      "tags": [
+        "development-round:3",
+        "looper:deferred",
+        "looper:finding:visitor-interface-acceptance"
+      ],
+      "unblock_when": "Resume when T011 provides the complete visitor interface.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T013",
+      "title": "Enforce persistent admission and spending limits",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Complete sections 9, 12.2, and 13 admission safeguards. Enforce 24-hour idempotency with a unique key constraint and atomic concurrent duplicate handling. Apply four concurrent matches, three new matches per source per ten minutes, an 8 KiB body limit, 256 output tokens, 15-second requests, and a 180-second match deadline. Make specified limits configurable and document measured adjustments. Reserve worst-case model cost before acceptance using current verified prices. Persist reservations across restart, reset daily at 00:00 UTC, and retain conservative amounts for unknown charges. Configure a separate telemetry budget. Use trusted proxy configuration and short-lived source hashes outside replay and public telemetry.",
+      "depends_on": [
+        "T010"
+      ],
+      "blockers": [
+        "Deferred: Resume in round 4 after T010 supplies admission endpoints."
+      ],
+      "tags": [
+        "development-round:4",
+        "looper:deferred",
+        "looper:finding:bounded-hosted-admission"
+      ],
+      "unblock_when": "Resume in round 4 after T010 supplies admission endpoints.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T014",
+      "title": "Preserve committed results through failures and restarts",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Implement startup interruption of pending and running matches. Preserve committed rounds, release execution capacity, and reconcile reservations conservatively. Never repeat uncertain provider requests automatically. Test deadlines, failed storage commits, invalid decisions, exhausted attempts, provider failures, and telemetry export failures. Verify terminal states, safe errors, no fabricated outcomes, and unchanged stored scores after telemetry failure.",
+      "depends_on": [
+        "T013"
+      ],
+      "blockers": [
+        "Deferred: Resume when T013 provides persistent admission accounting."
+      ],
+      "tags": [
+        "development-round:4",
+        "looper:deferred",
+        "looper:finding:restart-interruption-and-reconciliation"
+      ],
+      "unblock_when": "Resume when T013 provides persistent admission accounting.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T015",
+      "title": "Implement bounded product events and factual reports",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Implement section 14 server events and the bounded browser-event endpoint. Reject arbitrary event names and attributes. Exclude strategy text from event payloads. Report completion, rematch, eligible own-trace clicks, separate example clicks, local-setup clicks, costs, and median and upper-percentile durations. Include failed-match costs separately and preserve unknown-cost distinctions. Test event validation and report denominators. Document browser measurements as approximate. Do not equate clicks with activation or replay links with people.",
+      "depends_on": [
+        "T010",
+        "T014"
+      ],
+      "blockers": [
+        "Deferred: Resume when T010 and T014 provide admission and terminal-state behavior."
+      ],
+      "tags": [
+        "development-round:4",
+        "looper:deferred",
+        "looper:finding:bounded-product-measurement"
+      ],
+      "unblock_when": "Resume when T010 and T014 provide admission and terminal-state behavior.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T016",
+      "title": "Prepare hosting, backup, retention, and link procedures",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Prepare and locally verify a single-process deployment using a persistent SQLite volume and HTTPS configuration. Document server-side secrets, trusted proxies, operating budgets, readiness, backup, restore, replay retention, and featured-link review. Execute a backup and restore drill against temporary data. Verify replay access survives missing or expired Logfire references. Research a suitable persistent host and retention options. Present concrete configuration choices for owner approval without publishing the application.",
+      "depends_on": [
+        "T014",
+        "T015"
+      ],
+      "blockers": [
+        "Deferred: Resume when T014 and T015 are complete."
+      ],
+      "tags": [
+        "development-round:4",
+        "looper:deferred",
+        "looper:finding:hosting-and-operations-preparation"
+      ],
+      "unblock_when": "Resume when T014 and T015 are complete.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T017",
+      "title": "Choose hosted budgets, retention, and deployment access",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Resolve the owner-controlled choices in sections 13 and 19 using the prepared options. Record exact values and access prerequisites without storing secrets. Approval of these choices does not itself authorize public publication.",
+      "depends_on": [
+        "T016"
+      ],
+      "blockers": [
+        "An operator must complete this prerequisite; coding workers cannot execute it.",
+        "Deferred: Resume when T016 supplies concrete configuration choices for approval."
+      ],
+      "tags": [
+        "development-round:4",
+        "looper:deferred",
+        "looper:finding:hosted-operating-decisions",
+        "looper:operator"
+      ],
+      "unblock_when": "Resume when T016 supplies concrete configuration choices for approval.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T018",
+      "title": "Prove bounded operation under failure and abuse",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Run executable boundary and failure checks from section 15.2 under the configured limits. Cover concurrent duplicate submissions, budget exhaustion, reservation persistence, UTC reset, source throttling, untrusted forwarding headers, request limits, restart interruption, safe responses, and zero model requests during replay. Verify backup restoration and unavailable trace handling. Record passing results and known limits. This is the round 4 exit gate.",
+      "depends_on": [
+        "T013",
+        "T014",
+        "T015",
+        "T016",
+        "T017"
+      ],
+      "blockers": [
+        "Deferred: Resume when T013 through T017 are complete."
+      ],
+      "tags": [
+        "development-round:4",
+        "looper:deferred",
+        "looper:finding:bounded-operation-acceptance"
+      ],
+      "unblock_when": "Resume when T013 through T017 are complete.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T019",
+      "title": "Prepare three reviewed examples and the local Logfire path",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Prepare three stored example matches using real model responses within the approved allowance. Review each complete trace and mark recorded examples clearly. Implement and test a local example using normal Logfire authentication and the developer's own project. Never request visitor Logfire tokens or default local telemetry to the hosted project. Document installation, execution, trace discovery, and expected costs. Verify the quick start in a clean environment.",
+      "depends_on": [
+        "T018"
+      ],
+      "blockers": [
+        "Deferred: Resume when T018 passes and the required live allowance is authorized."
+      ],
+      "tags": [
+        "development-round:5",
+        "looper:deferred",
+        "looper:finding:reviewed-examples-and-local-logfire"
+      ],
+      "unblock_when": "Resume when T018 passes and the required live allowance is authorized.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T020",
+      "title": "Publish reviewed examples and authorize external access",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Use supported Logfire UI actions to create reviewed links and verify them signed out. Record links with the operator CLI. Publish the prepared application on the approved persistent host over HTTPS. Verify configured budgets, one worker, persistent storage, and safe health responses. These external publication actions follow completed local preparation.",
+      "depends_on": [
+        "T017",
+        "T019"
+      ],
+      "blockers": [
+        "An operator must complete this prerequisite; coding workers cannot execute it.",
+        "Deferred: Resume after T017 and T019, with explicit publication authorization and service access."
+      ],
+      "tags": [
+        "development-round:5",
+        "looper:deferred",
+        "looper:finding:reviewed-demo-publication",
+        "looper:operator"
+      ],
+      "unblock_when": "Resume after T017 and T019, with explicit publication authorization and service access.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T021",
+      "title": "Prepare the demonstration and verify its explanation",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Create a short demonstration recording and a technical explanation with real reviewed trace links. Show play, inspect, replay, and rematch behavior. Explain deterministic opponents and distinguish stated reasons from facts. Keep product claims within section 14 measurement limits. Review interface text and documentation against the official ASD-STE100 Issue 9 rules and dictionary. Use sentence checks only as aids. Update the README and changelog to describe implemented behavior accurately.",
+      "depends_on": [
+        "T020"
+      ],
+      "blockers": [
+        "Deferred: Resume when T020 provides the verified public demonstration."
+      ],
+      "tags": [
+        "development-round:5",
+        "looper:deferred",
+        "looper:finding:demonstration-and-editorial-evidence"
+      ],
+      "unblock_when": "Resume when T020 provides the verified public demonstration.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T022",
+      "title": "Obtain external playtest participation",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Prepare a short test script and feedback questions before requesting participation. External testers must attempt the complete play, inspect, and rematch flow. Collect actual observations without claiming unconfirmed activation. Do not contact people without authorization.",
+      "depends_on": [
+        "T020"
+      ],
+      "blockers": [
+        "An operator must complete this prerequisite; coding workers cannot execute it.",
+        "Deferred: Resume local preparation when T020 provides the demonstration. Recruitment waits for willing testers or authorized outreach.",
+        "Deferred: Resume preparation when T020 provides the demonstration. Resume recruitment when willing testers or explicit outreach authorization are available."
+      ],
+      "tags": [
+        "development-round:5",
+        "looper:deferred",
+        "looper:finding:external-playtest-preparation",
+        "looper:operator"
+      ],
+      "unblock_when": "Resume preparation when T020 provides the demonstration. Resume recruitment when willing testers or explicit outreach authorization are available.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T023",
+      "title": "Complete the playtest improvement and release audit",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Produce the small playtest report and implement at least one documented improvement based on observed results. Repeat affected checks. Audit every section 18 release criterion and all development-round exit requirements. Verify three reviewed examples, signed-out Logfire access, local setup, bounded hosting, failure preservation, and complete external play/inspect/rematch flow. Record actual commands, results, operational evidence, decisions, and remaining limits. Do not declare release readiness while a required gate remains blocked.",
+      "depends_on": [
+        "T018",
+        "T019",
+        "T020",
+        "T021",
+        "T022"
+      ],
+      "blockers": [
+        "Deferred: Resume when T018 through T022 provide operational, publication, demonstration, and external playtest evidence."
+      ],
+      "tags": [
+        "development-round:5",
+        "looper:deferred",
+        "looper:finding:playtest-improvement-and-release-audit"
+      ],
+      "unblock_when": "Resume when T018 through T022 provide operational, publication, demonstration, and external playtest evidence.; remove looper:deferred and set todo when this condition is met."
+    },
+    {
+      "id": "T024",
+      "title": "Evaluate optional anonymous public-project access",
+      "priority": 5,
+      "status": "blocked",
+      "details": "Perform the optional section 11.4 experiment separately from current release gates. Test signed-out project and trace access, plan requirements, retention, and revocation. Update the public-access decision record with actual evidence. Consider direct links only after notice and telemetry exposure reviews. Verify any automatic sharing capability through supported documentation and account permissions. Do not invent endpoints or make this enhancement a prerequisite for the reviewed-link release.",
+      "depends_on": [
+        "T023"
+      ],
+      "blockers": [
+        "Deferred: Resume after T023 and explicit authorization for a dedicated synthetic-data project with suitable account access."
+      ],
+      "tags": [
+        "development-round:post-release",
+        "looper:deferred",
+        "looper:finding:optional-public-project-experiment"
+      ],
+      "unblock_when": "Resume after T023 and explicit authorization for a dedicated synthetic-data project with suitable account access.; remove looper:deferred and set todo when this condition is met."
+    }
+  ]
+}

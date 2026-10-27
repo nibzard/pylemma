@@ -1,0 +1,27 @@
+# Python environments and generated files
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+# Local configuration and runtime data
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+# Private verification environments and caches
+.verification/
+# Explicit live evaluation reports
+.evaluations/
+# Local Logfire authentication and trace review output
+.logfire/
+.trace-reviews/
