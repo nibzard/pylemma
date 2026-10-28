@@ -1,0 +1,8 @@
+The new lifecycle diagnostics exposed idle shutdown during startup.
+The SDK starts counting in-flight requests only after startup, so the
+existing Worker busy flag must also protect the startup interval.
+
+Worker tests: 16 passed. Browser tests: 8 passed. Earlier Python checks:
+243 passed. A full local container started at the hosted CPU and memory
+limits. Live application correlation awaits container image rollover.
+See docs/development/2026-10-28-diagnostics.md for verification evidence.
