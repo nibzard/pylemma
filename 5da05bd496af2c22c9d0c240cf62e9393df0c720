@@ -1,0 +1,1 @@
+The historical sandbox failure lacks an exception class and is not reproduced. Inspect the new error_type attribute if it recurs; do not claim its cause is fixed.
