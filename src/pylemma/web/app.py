@@ -9,14 +9,16 @@ from typing import Annotated, Any, Protocol
 from uuid import UUID
 
 import logfire
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.middleware.base import RequestResponseEndpoint
 
 from pylemma.generator import Generator
 from pylemma.machine_store import MachineStore
 from pylemma.machines import Blueprint, Machine, Sandbox, play, tournament
+from pylemma.remote_store import RemoteMachineStore
 from pylemma.telemetry import configure, match_context, span
 
 
@@ -39,13 +41,22 @@ class Challenge(BaseModel):
 
 
 def create_app(
-    store: MachineStore, builder: Builder, telemetry: logfire.Logfire, daily_limit: int
+    store: MachineStore | RemoteMachineStore,
+    builder: Builder,
+    telemetry: logfire.Logfire,
+    daily_limit: int,
 ) -> FastAPI:
     """Explicit dependencies allow offline tests without weakening hosted startup."""
     if telemetry is None or daily_limit < 1:
         raise ValueError("Configure Logfire and a positive generation quota.")
     sandbox = Sandbox()
     gate = asyncio.Lock()
+
+    def flush() -> None:
+        try:
+            telemetry.force_flush(timeout_millis=3000)
+        except Exception:
+            pass
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -54,10 +65,27 @@ def create_app(
         finally:
             sandbox.close()
             await builder.close()
+            if isinstance(store, RemoteMachineStore):
+                store.close()
+            flush()
 
     app = FastAPI(lifespan=lifespan)
+
+    @app.middleware("http")
+    async def flush_trace(
+        request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        response = await call_next(request)
+        if request.method == "POST":
+            await asyncio.to_thread(flush)
+        return response
+
     assets = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=assets), name="static")
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ok"}
 
     @app.get("/")
     def index() -> FileResponse:
@@ -159,8 +187,16 @@ def hosted() -> FastAPI:
     quota = int(os.environ["PYLEMMA_DAILY_GENERATIONS"])
     if quota < 1:
         raise ValueError("The generation quota must be positive.")
+    store_url = os.environ.get("PYLEMMA_STORE_URL")
+    store: MachineStore | RemoteMachineStore
+    if store_url:
+        store = RemoteMachineStore(store_url, os.environ["PYLEMMA_STORE_TOKEN"])
+    else:
+        store = MachineStore(
+            Path(os.environ.get("PYLEMMA_DATABASE", "machines.sqlite3"))
+        )
     return create_app(
-        MachineStore(Path(os.environ.get("PYLEMMA_DATABASE", "machines.sqlite3"))),
+        store,
         Generator(os.environ["OPENAI_API_KEY"]),
         configure(),
         quota,

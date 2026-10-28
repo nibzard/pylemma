@@ -25,3 +25,8 @@ htmlcov/
 # Local Logfire authentication and trace review output
 .logfire/
 .trace-reviews/
+# Cloudflare tooling and local secrets
+node_modules/
+.wrangler/
+.dev.vars*
+.cloudflare/

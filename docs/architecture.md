@@ -226,3 +226,15 @@ A tournament runs the fixed trust-v1 opponent set and adds the machine's points.
 A challenge runs two stored machines against each other.
 The machine observation uses `self` and `opponent` for completed choices.
 It excludes the opponent's current decision, source, and strategy.
+
+## Cloudflare deployment boundary
+
+`deploy/cloudflare/worker.js` routes public requests and serves static assets.
+Its single `Pylemma` Durable Object owns immutable records and atomic spending reservations through `storage.mjs`.
+Stored reads do not start the container. The Worker validates paid requests before forwarding them.
+`remote_store.py` authenticates private storage operations from Python.
+Local installations retain `MachineStore`; Cloudflare selects the remote adapter through environment configuration.
+The container owns model generation and Monty execution, with one instance and one application worker.
+The application flushes traces after completed requests without changing game results on exporter failure.
+Idle destruction avoids keeping a stopped Python server inside a running container.
+See [the deployment decision](decisions/005-cloudflare-container-storage.md) and [operations](runbooks/cloudflare.md).

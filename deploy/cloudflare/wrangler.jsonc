@@ -1,0 +1,50 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pylemma",
+  "main": "worker.js",
+  "account_id": "24f97aae6afe0315dac069a5c08fe795",
+  "compatibility_date": "2026-10-28",
+  "routes": [
+    {
+      "pattern": "pylemma.aor.fyi",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": true,
+  "assets": {
+    "directory": "../../src/pylemma/web/static",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "containers": [
+    {
+      "class_name": "Pylemma",
+      "image": "registry.cloudflare.com/24f97aae6afe0315dac069a5c08fe795/pylemma@sha256:1351e5cabfbda5c56131083328e719ff701e9bbb0b7e484b21ff2aa5a29321fc",
+      "instance_type": "lite",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME",
+        "class_name": "Pylemma"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "Pylemma"
+      ]
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "LOGFIRE_BASE_URL": "https://logfire-eu.pydantic.dev"
+  },
+  "preview_urls": false
+}

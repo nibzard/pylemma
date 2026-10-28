@@ -231,3 +231,11 @@ See [trace review](docs/runbooks/trace-review.md) for the required content revie
 
 Challenges have a separate daily quota of twenty times the generation quota.
 Run one application worker to preserve the execution admission limit.
+
+## Public deployment
+
+Open https://pylemma.aor.fyi to build a machine or challenge a shared machine.
+The Cloudflare deployment stores records outside its temporary container disk.
+It has twenty daily generations and eighty lifetime generations under the initial spending allowance.
+See [Cloudflare operations](docs/runbooks/cloudflare.md) for deployment, secrets, spending controls, and shutdown.
+Run its offline storage checks with `npm test --prefix deploy/cloudflare`.

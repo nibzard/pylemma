@@ -1272,3 +1272,25 @@ Verify actual account permissions before depending on an API capability.
 
 This specification has no verified deployed Logfire integration yet.
 The implementation phases require that verification.
+
+## Cloudflare deployment contract
+
+This section refines the machine release contract for the Cloudflare deployment.
+The public domain is pylemma.aor.fyi. The current phase includes deployment and authorized live verification.
+Python and Monty run in one Linux container. Cloudflare Worker assets serve the browser.
+A SQLite-backed Durable Object owns machine records, replay records, quotas, and lifetime spending reservations.
+The container accesses this boundary through authenticated private requests.
+Local SQLite remains supported for local installations.
+
+Generation has a daily limit of twenty and a lifetime limit of eighty.
+Each attempt reserves USD 0.05 against a USD 4 allowance before the provider call.
+Failed and uncertain attempts retain their reservation. The lifetime allowance does not reset at midnight or deployment.
+Challenges have daily and lifetime limits of four hundred and sixteen hundred.
+The initial authorization is at most USD 5, including verification and an infrastructure buffer.
+Cloudflare still meters infrastructure use. Application reservations cannot cap unrelated account charges.
+The operator must authorize any increase before changing these limits.
+
+Static pages and stored reads do not start the container.
+The idle container is destroyed after thirty seconds. Records survive that destruction.
+The application flushes completed traces before responding. Export failures do not change completed results.
+Validate generation, challenges, stored replays after replacement, browser rendering, and remote trace delivery before announcing the deployment.

@@ -245,3 +245,26 @@ def test_generation_http_contract_and_trace(sandbox: Sandbox) -> None:
     spans = exporter.get_finished_spans()
     assert any(s.name == "machine.generate" for s in spans)
     assert any(s.name == "machine.decision" for s in spans)
+
+
+def test_export_flush_failure_preserves_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = MachineStore(tmp_path / "flush.sqlite3")
+    telemetry = logfire.configure(send_to_logfire=False, console=False, local=True)
+
+    def broken_flush(*args: Any, **kwargs: Any) -> bool:
+        raise RuntimeError("Exporter unavailable")
+
+    monkeypatch.setattr(telemetry, "force_flush", broken_flush)
+    with TestClient(create_app(store, FakeBuilder(), telemetry, 1)) as client:
+        response = client.post(
+            "/api/machines",
+            json={
+                "name": "Trust",
+                "strategy": "Cooperate",
+                "public_acknowledged": True,
+            },
+        )
+        assert response.status_code == 201
+        assert response.json()["result"]["total"] == 81

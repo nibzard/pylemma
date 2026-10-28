@@ -1,0 +1,8 @@
+{
+  "name": "pylemma-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {"deploy": "wrangler deploy", "test": "node --test test/*.test.mjs"},
+  "dependencies": {"@cloudflare/containers": "0.3.7"},
+  "devDependencies": {"wrangler": "4.154.0"}
+}

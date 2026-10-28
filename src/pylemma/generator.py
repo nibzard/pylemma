@@ -43,6 +43,8 @@ class Generator:
             response = await self.client.chat.completions.create(
                 model=MODEL_ID,
                 max_completion_tokens=2400,
+                reasoning_effort="none",
+                service_tier="default",
                 messages=[
                     {"role": "system", "content": PROMPT},
                     {"role": "user", "content": strategy},
