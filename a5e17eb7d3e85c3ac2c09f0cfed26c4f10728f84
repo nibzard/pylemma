@@ -1,0 +1,1 @@
+Generate small deterministic PNG cards from saved choices in the Worker. Replay links expose server-rendered card metadata and a challenge action. No model calls or container rendering. Verified colors, PNG pixels, metadata escaping, cache behavior, and mobile sharing.
