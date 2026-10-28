@@ -58,4 +58,19 @@ A score is an average of game points, not a percentile or quality rating.
 
 ## Next implementation step
 
-Verify existing public entries, browser presentation, and sharing text before deploying.
+No further work is required for this presentation change.
+
+
+## Live verification
+
+Worker version: f31e2841-0f6f-49d1-84d1-21ac3bc9b2da.
+Image digest: bd6b000e39561ac489a3c60ee25c4fdc8c395c21dbeaf239264e94722744a101.
+Container information confirmed the new image and healthy state.
+
+Both existing public replay identifiers and their stored scores were preserved.
+The public read endpoint supplied their original strategy text.
+The browser showed Player, Strategy, Score, Replay, and Challenge columns.
+The two scores displayed as 2.59 / 5 and 2.13 / 5.
+The current-only page did not show internal arena version labels.
+At a 390-pixel viewport, the list fit its 354-pixel container without page overflow.
+No model generation or game execution requests were made.
