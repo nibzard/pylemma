@@ -238,3 +238,13 @@ The container owns model generation and Monty execution, with one instance and o
 The application flushes traces after completed requests without changing game results on exporter failure.
 Idle destruction avoids keeping a stopped Python server inside a running container.
 See [the deployment decision](decisions/005-cloudflare-container-storage.md) and [operations](runbooks/cloudflare.md).
+
+## First-visit interface
+
+The interface calls each machine a player. Stored `Machine` contracts and API identifiers retain their existing names.
+Preview mode validates and stores code before execution. The tournament endpoint executes that same version after confirmation.
+It shares the execution quota with challenges and makes no provider request.
+`web/static/story.mjs` derives factual explanations from completed choices and contains version-specific reference scores.
+It never changes authoritative scores or requests another explanation from a model.
+The browser demonstration uses three fixed single-round examples and makes no external request.
+Shared pages render their result or invitation first. Revision links retain an earlier replay for comparison.

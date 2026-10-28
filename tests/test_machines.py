@@ -268,3 +268,56 @@ def test_export_flush_failure_preserves_result(
         )
         assert response.status_code == 201
         assert response.json()["result"]["total"] == 81
+
+
+def test_preview_then_confirm_without_another_generation(tmp_path: Path) -> None:
+    store = MachineStore(tmp_path / "preview.sqlite3")
+    builder = FakeBuilder()
+    telemetry = logfire.configure(send_to_logfire=False, console=False, local=True)
+    with TestClient(create_app(store, builder, telemetry, 1)) as client:
+        preview = client.post(
+            "/api/machines",
+            json={
+                "name": "Trust",
+                "strategy": "Cooperate",
+                "public_acknowledged": True,
+                "preview": True,
+            },
+        )
+        assert preview.status_code == 201
+        assert "result" not in preview.json()
+        assert builder.calls == 1
+        with store.connect() as db:
+            assert db.execute("SELECT count(*) FROM machine_replays").fetchone()[0] == 0
+        machine_id = preview.json()["machine"]["id"]
+        result = client.post("/api/tournaments", json={"machine_id": machine_id})
+        assert result.status_code == 201
+        assert result.json()["result"]["total"] == 81
+        assert builder.calls == 1
+        replay = client.get("/api/replays/" + result.json()["replay_id"]).json()
+        assert replay["machine"]["id"] == machine_id
+        assert replay["result"]["total"] == 81
+        assert (
+            client.post(
+                "/api/tournaments",
+                json={"machine_id": "00000000-0000-0000-0000-000000000000"},
+            ).status_code
+            == 404
+        )
+
+
+def test_published_reference_scores(sandbox: Sandbox) -> None:
+    cooperate = Machine.create("Cooperate", "Always cooperate", presets()[0])
+    betray = Machine.create(
+        "Betray",
+        "Always betray",
+        Blueprint(
+            summary="Always betray",
+            code=(
+                "def decide(o):\n"
+                "    return {'choice': 'betray', 'stated_reason': 'Always betray.'}"
+            ),
+        ),
+    )
+    assert tournament(sandbox, cooperate)["total"] == 81
+    assert tournament(sandbox, betray)["total"] == 78

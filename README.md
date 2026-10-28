@@ -239,3 +239,15 @@ The Cloudflare deployment stores records outside its temporary container disk.
 It has twenty daily generations and eighty lifetime generations under the initial spending allowance.
 See [Cloudflare operations](docs/runbooks/cloudflare.md) for deployment, secrets, spending controls, and shutdown.
 Run its offline storage checks with `npm test --prefix deploy/cloudflare`.
+
+## Learn the game
+
+The home page includes a short example that makes no model requests.
+Describe a strategy, check the generated rules, then confirm to start a tournament or challenge.
+Revisions can compare against the previous replay. Shared links open directly on the result or invitation.
+
+Run the factual explanation checks offline:
+
+```sh
+node --test tests/web/story.test.mjs
+```

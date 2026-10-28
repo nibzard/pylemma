@@ -32,6 +32,12 @@ class Create(BaseModel):
     name: Annotated[str, Field(min_length=1, max_length=60)]
     strategy: Annotated[str, Field(min_length=1, max_length=1000)]
     public_acknowledged: bool
+    preview: bool = False
+
+
+class TournamentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    machine_id: UUID
 
 
 class Challenge(BaseModel):
@@ -115,6 +121,10 @@ def create_app(
                     blueprint = await builder.generate(body.strategy)
                     await asyncio.to_thread(sandbox.validate, blueprint)
                     result = Machine.create(body.name, body.strategy, blueprint)
+                    if body.preview:
+                        store.put(result)
+                        operation.set(machine_id=str(result.id))
+                        return {"machine": result}
                     trial = await asyncio.to_thread(tournament, sandbox, result)
                     store.put(result)
                     replay = store.replay(
@@ -132,6 +142,34 @@ def create_app(
                         502,
                         "Machine creation failed. Revise your rules "
                         "or try again later.",
+                    ) from None
+
+    @app.post("/api/tournaments", status_code=201)
+    async def run_tournament(body: TournamentRequest) -> dict[str, Any]:
+        player = machine(body.machine_id)
+        if gate.locked():
+            raise HTTPException(429, "Another game is running. Try again shortly.")
+        async with gate:
+            if not store.reserve_challenge(daily_limit * 20):
+                raise HTTPException(429, "The daily game allowance is exhausted.")
+            with match_context(telemetry), span("machine.tournament") as operation:
+                try:
+                    result = await asyncio.to_thread(tournament, sandbox, player)
+                    replay = store.replay(
+                        {
+                            "kind": "tournament",
+                            "machine": player.model_dump(mode="json"),
+                            "result": result,
+                            "trace_id": operation.trace_id,
+                        }
+                    )
+                    operation.set(machine_id=str(player.id), replay_id=str(replay))
+                    return {"machine": player, "replay_id": replay, "result": result}
+                except Exception:
+                    raise HTTPException(
+                        422,
+                        "Your player stopped during the tournament. "
+                        "No completed result was recorded.",
                     ) from None
 
     @app.post("/api/challenges", status_code=201)

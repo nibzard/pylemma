@@ -41,7 +41,7 @@ export class Pylemma extends Container {
       const result = await operate(this.ctx.storage, {operation:'get', kind, id:match[2]});
       return Response.json(result ?? {detail:'Record not found.'}, {status:result ? 200 : 404});
     }
-    if (request.method !== 'POST' || !['/api/machines','/api/challenges'].includes(path)) {
+    if (request.method !== 'POST' || !['/api/machines','/api/challenges','/api/tournaments'].includes(path)) {
       return Response.json({detail:'Not found.'}, {status:404});
     }
     const lifetime = await this.ctx.storage.get(path === '/api/machines' ?
@@ -65,8 +65,15 @@ export class Pylemma extends Container {
     if (kind === 'generation') {
       if (typeof input.name !== 'string' || !input.name.trim() || input.name.length > 60 ||
           typeof input.strategy !== 'string' || !input.strategy.trim() || input.strategy.length > 1000 ||
-          input.public_acknowledged !== true || Object.keys(input).some(k=>!['name','strategy','public_acknowledged'].includes(k))) {
+          input.public_acknowledged !== true || (input.preview !== undefined && typeof input.preview !== 'boolean') || Object.keys(input).some(k=>!['name','strategy','public_acknowledged','preview'].includes(k))) {
         return Response.json({detail:'Supply a name, strategy, and public record acknowledgement.'}, {status:422});
+      }
+    } else if (path === '/api/tournaments') {
+      if (!validId(input.machine_id) || Object.keys(input).some(k=>k !== 'machine_id')) {
+        return Response.json({detail:'Supply a player identifier.'}, {status:422});
+      }
+      if (!await this.ctx.storage.get('machine:'+input.machine_id)) {
+        return Response.json({detail:'Player not found.'}, {status:404});
       }
     } else {
       if (!validId(input.left) || !validId(input.right) || Object.keys(input).some(k=>!['left','right'].includes(k))) {

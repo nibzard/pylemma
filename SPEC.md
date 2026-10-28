@@ -1294,3 +1294,36 @@ Static pages and stored reads do not start the container.
 The idle container is destroyed after thirty seconds. Records survive that destruction.
 The application flushes completed traces before responding. Export failures do not change completed results.
 Validate generation, challenges, stored replays after replacement, browser rendering, and remote trace delivery before announcing the deployment.
+
+## First-visit experience contract
+
+The current phase teaches the game and explains completed results.
+Use player in visitor-facing text. Machine remains the immutable implementation contract.
+Explain simultaneous choices, all four scores, and the ten-round objective before asking for a strategy.
+Provide a three-step local demonstration without storage, credentials, or model requests.
+The demonstration illustrates single-round outcomes. It does not claim to be a completed match.
+Supply a default name and complete example strategies.
+
+The browser creates a validated machine with `preview: true` on `POST /api/machines`.
+This optional field defaults to false to preserve existing clients.
+Preview creation stores the machine but creates no tournament or replay.
+The visitor checks its generated summary before starting play.
+`POST /api/tournaments` accepts `machine_id` and runs that stored version without generating code again.
+Tournament execution shares the challenge execution quota. It does not consume a generation reservation.
+A challenge invitation retains its target through preview, reload, and confirmation.
+Preview links use the player identifier. Replay links continue to use the replay identifier.
+
+Show shared results and challenge invitations before any creation form.
+Label both participants, choices, and points in round details.
+Derive explanations from completed outcomes. Do not infer motives or describe code reasons as verified causes.
+Show first betrayal, delayed response, and a final mutual betrayal streak when the stored choices support those statements.
+For completed trust-v1 tournaments under pd-v1, compare against fixed reference scores.
+Always cooperate earns 81 points. Always betray earns 78 points against the same opponent suite.
+The score comparison does not measure general intelligence or establish performance against other opponents.
+A revision link can preserve the earlier replay for a comparison under the same suite and rules version.
+
+Keep generated code and infrastructure explanations in optional details.
+Show a public Logfire link and its purpose when a reviewed reference exists.
+Do not show operator publication procedures as visitor instructions.
+Verify the demonstration, confirmation, revision, invitation, result, and mobile flows.
+Automated and browser checks do not replace comprehension testing with new visitors.

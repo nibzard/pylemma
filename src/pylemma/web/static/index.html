@@ -1,13 +1,96 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Prisoner's Pylemma — Build your rules for trust</title><link rel="stylesheet" href="/static/style.css"></head>
-<body><main><header><a href="/">PRISONER'S PYLEMMA</a><span>Built with Pydantic · Monty · Logfire</span></header>
-<section class="intro"><p class="eyebrow">A small experiment in trust</p><h1>How many times<br>will you forgive?</h1><p>Describe your rules for trust. Build a machine. Challenge someone else's.</p></section>
-<div class="layout"><section class="panel"><h2>Build your machine</h2><form id="builder"><label for="name">Machine name</label><input id="name" maxlength="60" required placeholder="The second chance">
-<label for="strategy">Your rules for trust</label><textarea id="strategy" maxlength="1000" required rows="5" placeholder="Trust first. Forgive one betrayal. After the second, always betray."></textarea>
-<div class="examples"><button type="button" data-example="Cooperate first. Then copy the opponent's previous choice.">Copy their last move</button><button type="button" data-example="Cooperate until the opponent betrays twice. Then always betray.">Forgive once</button><button type="button" data-example="Always betray.">Trust nobody</button></div>
-<label class="notice"><input id="ack" type="checkbox" required> My name, strategy, generated code, and results are available to anyone with their links. I will not enter private information.</label>
-<button class="primary" type="submit">Build and test my machine →</button><p class="small">AI generates your code once. Monty runs each decision in a fresh sandbox. Logfire records execution.</p></form></section>
-<aside class="panel"><h2>Two choices. Ten rounds.</h2><p>Both machines choose <strong>Cooperate</strong> or <strong>Betray</strong>. Choices appear together.</p><table><caption>Points per round: you / opponent</caption><tr><th></th><th>They cooperate</th><th>They betray</th></tr><tr><th>You cooperate</th><td>3 / 3</td><td>0 / 5</td></tr><tr><th>You betray</th><td>5 / 0</td><td>1 / 1</td></tr></table><p>Your tournament score adds your points against three fixed opponents. Cooperation can earn both machines more.</p><p class="small">A score describes this game. It does not measure intelligence or real-world trustworthiness.</p></aside></div>
-<p id="status" role="status" aria-live="polite"></p><section id="result" hidden class="panel"></section>
-<footer>What happens when everyone follows their own rules?</footer></main><script src="/static/app.js" defer></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Prisoner's Pylemma — What are your rules for trust?</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the game</a>
+  <main id="content">
+    <header>
+      <a class="brand" href="/">PRISONER'S PYLEMMA<span>A game about trust</span></a>
+      <button type="button" class="quiet" id="help">How to play</button>
+    </header>
+
+    <section id="intro" class="intro">
+      <p class="eyebrow">Friendly first. But for how long?</p>
+      <h1>What are your<br>rules for trust?</h1>
+      <p class="lead">Your player meets another player for ten rounds. Each round, both secretly choose whether to cooperate or betray.</p>
+      <p>Cooperating together earns more than betraying each other. But betraying someone who cooperates earns you the most.</p>
+      <div class="actions">
+        <button type="button" class="primary" id="start">Create your player <span aria-hidden="true">→</span></button>
+        <button type="button" id="try-demo">Try an example</button>
+      </div>
+      <p class="small">No account or coding needed. The example makes no AI requests.</p>
+    </section>
+
+    <section id="shared" hidden tabindex="-1" aria-label="Shared game"></section>
+
+    <section id="learn" class="panel lesson" aria-labelledby="lesson-title">
+      <div>
+        <p class="eyebrow">Learn the choices</p>
+        <h2 id="lesson-title">Trust can pay. Betrayal can too.</h2>
+        <p>Each choice changes both scores. You cannot see the other player's choice until both have chosen.</p>
+        <p>Earn as many points as you can over ten rounds. Your player remembers the earlier choices.</p>
+        <details>
+          <summary>See all four outcomes</summary>
+          <table>
+            <caption>Points for one round</caption>
+            <thead><tr><th>Your choice</th><th>Their choice</th><th>Your points</th><th>Their points</th></tr></thead>
+            <tbody>
+              <tr><td>Cooperate</td><td>Cooperate</td><td>3</td><td>3</td></tr>
+              <tr><td>Betray</td><td>Cooperate</td><td>5</td><td>0</td></tr>
+              <tr><td>Cooperate</td><td>Betray</td><td>0</td><td>5</td></tr>
+              <tr><td>Betray</td><td>Betray</td><td>1</td><td>1</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+      <div class="demo">
+        <p class="small">Illustration · no AI involved</p>
+        <div id="demo-choices" class="choice-pair"></div>
+        <div id="demo-explanation" role="status" aria-live="polite"></div>
+        <button type="button" id="demo-next">Try betraying</button>
+      </div>
+    </section>
+
+    <section id="create" class="panel create-panel" aria-labelledby="create-title">
+      <p class="eyebrow">Make it your own</p>
+      <h2 id="create-title">Give your player a rule to follow.</h2>
+      <p>Can it earn points without getting exploited? Start with an example, or write your own rule.</p>
+      <form id="builder">
+        <label for="strategy">How should your player respond?</label>
+        <p class="hint" id="strategy-hint">Describe when it should cooperate, betray, or forgive.</p>
+        <textarea id="strategy" aria-describedby="strategy-hint" maxlength="1000" required rows="4" placeholder="Cooperate first. Forgive one betrayal. After the second, always betray."></textarea>
+        <div class="examples" aria-label="Example strategies">
+          <button type="button" data-name="The mirror" data-example="Cooperate first. Then copy the opponent's previous choice.">Start friendly, then copy</button>
+          <button type="button" data-name="The second chance" data-example="Cooperate until the opponent betrays twice. Then always betray.">Forgive one betrayal</button>
+          <button type="button" data-name="Trust nobody" data-example="Always betray.">Always betray</button>
+        </div>
+        <label for="name">Player name <span class="small">You can change this.</span></label>
+        <input id="name" maxlength="60" required value="The second chance" autocomplete="off">
+        <label class="notice"><input id="ack" type="checkbox" required><span>Anyone with a link can see my player's name, rules, generated code, and results. I will not enter private information.</span></label>
+        <button class="primary" type="submit">Check my player's rules <span aria-hidden="true">→</span></button>
+        <p class="small">AI turns your description into a player. You can check its rules before it plays.</p>
+      </form>
+    </section>
+
+    <p id="status" role="status" aria-live="polite"></p>
+    <section id="review" class="panel" hidden tabindex="-1" aria-label="Check your player's rules"></section>
+
+    <footer>
+      <details id="technology">
+        <summary>How this works · Pydantic, Monty, and Logfire</summary>
+        <p>AI generates Python code from your rules once. Monty runs each decision in a fresh sandbox.</p>
+        <p>Pydantic checks the data. Logfire records the code generation and game execution.</p>
+        <p>When a reviewed Logfire link is available, you can inspect the information each player received and its returned choice.</p>
+        <p>The short reasons come from the players' code. They do not prove why the code made a choice.</p>
+      </details>
+      <p>A small experiment in cooperation and betrayal.</p>
+    </footer>
+  </main>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

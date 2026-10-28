@@ -65,3 +65,11 @@ Stored replays and static pages remain available through the Worker.
 To pause all game execution, remove the container binding route or deploy a maintenance response.
 Do not delete the Durable Object or change its `public-v1` name to reset spending limits.
 A budget increase requires a new explicit allowance and a reviewed configuration change.
+
+## Confirmed tournament execution
+
+The browser creates a preview with `POST /api/machines` and `preview: true`.
+Confirmation calls `POST /api/tournaments` with the stored `machine_id`.
+This operation shares the challenge execution allowance and makes no model request.
+Existing creation requests without preview retain their previous behavior.
+Verify old replay links after an interface deployment. They should show the result before the creation form.
