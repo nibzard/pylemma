@@ -73,7 +73,8 @@ export async function operate(storage, input, now = new Date()) {
     const generations = await storage.get('lifetime:generation') || 0;
     const challenges = await storage.get('lifetime:challenge') || 0;
     return {generations, challenges, reserved_micro_usd:generations * RESERVATION_MICRO_USD,
-      budget_micro_usd:BUDGET_MICRO_USD};
+      budget_micro_usd:BUDGET_MICRO_USD,
+      result_reset:await storage.get("maintenance:results-reset-2026-10-28") ?? null};
   }
   if (input.operation === 'reserve') {
     if (!['generation', 'challenge'].includes(input.kind) ||
@@ -119,4 +120,26 @@ export async function operate(storage, input, now = new Date()) {
     });
   }
   throw new Error('Unknown operation.');
+}
+
+/** One-time operator-requested reset. Never delete players or spending records. */
+export async function clearPreviousResults(storage) {
+  const marker='maintenance:results-reset-2026-10-28';
+  return storage.transaction(async tx=>{
+    const completed=await tx.get(marker);
+    if (completed) return completed;
+    const removed={replays:0,public_entries:0,arena_entries:0};
+    for (const [prefix,label] of [['replay:','replays'],['public:','public_entries'],['arena:','arena_entries']]) {
+      for (;;) {
+        const entries=await tx.list({prefix,limit:128});
+        if (!entries.size) break;
+        const keys=[...entries.keys()];
+        await tx.delete(keys);
+        removed[label]+=keys.length;
+      }
+    }
+    const result={...removed,completed_at:new Date().toISOString()};
+    await tx.put(marker,result);
+    return result;
+  });
 }

@@ -280,3 +280,16 @@ Review failed or interrupted references before raising quotas or increasing time
 Arena v2 entries use the same ten presets for twenty rounds.
 Do not rank them together with legacy arena or historical tournament totals.
 Changing a fixed policy requires a new suite version.
+
+## Results reset on 2026-10-28
+
+The user requested deletion of all prior results.
+The Worker runs clearPreviousResults during Durable Object initialization.
+One transaction deletes replay:, public:, and arena: keys.
+It preserves machine:, build:, daily:, and lifetime: keys.
+The maintenance:results-reset-2026-10-28 marker prevents repeated deletion.
+Do not remove that marker during maintenance or deployment.
+The authenticated status operation includes the reset counts.
+New games created after the reset remain stored.
+Previous replay links return not found; saved player links remain available.
+This operation does not delete Logfire traces.

@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { operate, MAX_GENERATIONS, validId } from '../storage.mjs';
+import { clearPreviousResults, operate, MAX_GENERATIONS, validId } from '../storage.mjs';
 
 class Storage {
   values = new Map();
   pending = Promise.resolve();
-  async list({prefix}) { return new Map([...this.values].filter(([key])=>key.startsWith(prefix))); }
+  async list({prefix,limit=Infinity}) { return new Map([...this.values].filter(([key])=>key.startsWith(prefix)).slice(0,limit)); }
   async get(key) { return structuredClone(this.values.get(key)); }
   async put(key, value) {
     if (typeof key === 'object') {
@@ -142,4 +142,37 @@ test('public arena versions validate their own round counts',async()=>{
   data.result.suite_version='arena-v2';
   data.result.total=1001;
   assert.equal(publicEntry('r',data),null);
+});
+
+
+test('result reset deletes only results and indexes and never repeats',async()=>{
+  const storage=new Storage();
+  storage.delete=async keys=>{
+    let count=0;
+    for (const key of keys) if(storage.values.delete(key)) count++;
+    return count;
+  };
+  for (const prefix of ['replay:','public:','arena:']) {
+    for(let n=0;n<260;n++) await storage.put(prefix+n,{saved:true});
+  }
+  const preserved={
+    'machine:player':{name:'@player'},
+    'build:reference':{stage:'complete',machine_id:'player'},
+    'daily:2026-10-28:generation':42,
+    'daily:2026-10-28:challenge':55,
+    'lifetime:generation':87,
+    'lifetime:challenge':99,
+  };
+  await storage.put(preserved);
+  const first=await clearPreviousResults(storage);
+  assert.equal(first.replays,260);
+  assert.equal(first.public_entries,260);
+  assert.equal(first.arena_entries,260);
+  for(const [key,value] of Object.entries(preserved)) assert.deepEqual(await storage.get(key),value);
+  assert.equal((await storage.list({prefix:'replay:'})).size,0);
+  assert.equal((await storage.list({prefix:'public:'})).size,0);
+  assert.equal((await storage.list({prefix:'arena:'})).size,0);
+  await storage.put('replay:new',{saved:'after-reset'});
+  assert.deepEqual(await clearPreviousResults(storage),first);
+  assert.deepEqual(await storage.get('replay:new'),{saved:'after-reset'});
 });

@@ -1,5 +1,5 @@
 import { Container } from '@cloudflare/containers';
-import { operate, validId, DAILY_GENERATIONS, DAILY_CHALLENGES, MAX_GENERATIONS, MAX_CHALLENGES } from './storage.mjs';
+import { clearPreviousResults, operate, validId, DAILY_GENERATIONS, DAILY_CHALLENGES, MAX_GENERATIONS, MAX_CHALLENGES } from './storage.mjs';
 import { inspectLink } from './trace-links.mjs';
 
 export class Pylemma extends Container {
@@ -20,6 +20,8 @@ export class Pylemma extends Container {
       PYLEMMA_STORE_URL: 'https://pylemma.aor.fyi',
       PYLEMMA_STORE_TOKEN: env.STORE_TOKEN,
     };
+    // This dated reset runs once. The transaction also records its completion.
+    ctx.blockConcurrencyWhile?.(()=>clearPreviousResults(ctx.storage));
   }
   onStart() {
     diagnosticLog({event:'container.started',version:this.env.VERSION_METADATA?.id || 'unknown'});
