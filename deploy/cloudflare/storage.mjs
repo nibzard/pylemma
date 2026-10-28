@@ -56,11 +56,12 @@ export async function operate(storage, input, now = new Date()) {
     return [...selected.values()];
   }
   if (input.operation === 'arena_games') {
-    const {offset=0,limit=20} = input;
+    const {offset=0,limit=20,ranked=false,player=null} = input;
+    if (typeof ranked !== 'boolean' || (player !== null && (!ranked || !validId(player)))) throw new Error('Invalid ranking request.');
     if (!Number.isInteger(offset) || offset < 0 || offset > 100000 ||
         !Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid page.');
     const entries = await storage.list({prefix:'public:'});
-    return withStrategies(storage,publicPage([...entries.values()].filter(row=>row.kind === 'arena'),false,offset,limit));
+    return withStrategies(storage,publicPage([...entries.values()].filter(row=>row.kind === 'arena'),ranked ? 'arena' : false,offset,limit,player));
   }
   if (input.operation === 'public_games') {
     const {ranked, offset=0, limit=20} = input;

@@ -163,7 +163,14 @@ class MachineStore:
                     return list(selected.values())
         return list(selected.values())
 
-    def arena_games(self, *, offset: int = 0, limit: int = 20) -> dict[str, Any]:
+    def arena_games(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = 20,
+        ranked: bool = False,
+        player: str | None = None,
+    ) -> dict[str, Any]:
         with self.connect() as db:
             records = db.execute("SELECT id, data FROM machine_replays").fetchall()
         summaries = [
@@ -172,4 +179,4 @@ class MachineStore:
             if (summary := entry(key, json.loads(raw))) is not None
             and summary["kind"] == "arena"
         ]
-        return page(summaries, False, offset, limit)
+        return page(summaries, "arena" if ranked else False, offset, limit, player)

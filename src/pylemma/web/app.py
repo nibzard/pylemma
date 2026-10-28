@@ -289,8 +289,17 @@ def create_app(
     def recent_arena(
         offset: Annotated[int, Query(ge=0, le=100000)] = 0,
         limit: Annotated[int, Query(ge=1, le=50)] = 20,
+        ranked: bool = False,
+        player: UUID | None = None,
     ) -> dict[str, Any]:
-        return store.arena_games(offset=offset, limit=limit)
+        if player is not None and not ranked:
+            raise HTTPException(422, "Player standings require the ranked view.")
+        return store.arena_games(
+            offset=offset,
+            limit=limit,
+            ranked=ranked,
+            player=str(player) if player else None,
+        )
 
     @app.post("/api/arena", status_code=201)
     async def enter_arena(body: ArenaRequest) -> dict[str, Any]:

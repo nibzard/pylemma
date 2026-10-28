@@ -109,6 +109,15 @@ class RemoteMachineStore:
             for item in self.call("arena_opponents", id=str(identifier))
         ]
 
-    def arena_games(self, *, offset: int = 0, limit: int = 20) -> dict[str, Any]:
-        result: dict[str, Any] = self.call("arena_games", offset=offset, limit=limit)
+    def arena_games(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = 20,
+        ranked: bool = False,
+        player: str | None = None,
+    ) -> dict[str, Any]:
+        result: dict[str, Any] = self.call(
+            "arena_games", offset=offset, limit=limit, ranked=ranked, player=player
+        )
         return result

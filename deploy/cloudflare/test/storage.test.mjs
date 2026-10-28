@@ -190,3 +190,25 @@ test('existing public summaries gain actual rules without rewriting results',asy
   const hidden=await operate(storage,{operation:'arena_games'});
   assert.equal(hidden.entries[0].players[0].strategy,'');
 });
+
+test('arena ranks exclude old formats and resolve standing beyond the page',async()=>{
+  const storage=new Storage();
+  const ids=['00000000-0000-4000-8000-000000000001',
+    '00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000003',
+    '00000000-0000-4000-8000-000000000004'];
+  for (const [index,id] of ids.entries()) {
+    await storage.put('public:'+id,{replay_id:id,kind:'arena',
+      suite_version:index===3?'arena-v1':'arena-v2',scores:[[564,564,425,900][index]],
+      players:[{id,name:'@x',strategy:'Copy.'}]});
+  }
+  const request={operation:'arena_games',ranked:true,limit:1,player:ids[2]};
+  const first=await operate(storage,request);
+  assert.equal(first.total,3);
+  assert.equal(first.entries[0].rank,1);
+  assert.deepEqual(first.standing,{rank:3,total:3});
+  assert.equal((await operate(storage,{...request,offset:1})).entries[0].rank,1);
+  assert.equal((await operate(storage,{...request,offset:2})).entries[0].rank,3);
+  assert.equal((await operate(storage,{...request,player:ids[3]})).standing,null);
+  await assert.rejects(operate(storage,{...request,player:'invalid'}));
+  await assert.rejects(operate(storage,{...request,ranked:false}));
+});

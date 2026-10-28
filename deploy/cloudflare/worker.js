@@ -111,7 +111,9 @@ export class Pylemma extends Container {
       const limit = Number(query.get('limit') ?? 20);
       try {
         return Response.json(await operate(this.ctx.storage, {
-          operation:path === '/api/arena' ? 'arena_games' : 'public_games', ranked:path === '/api/leaderboard', offset, limit,
+          operation:path === '/api/arena' ? 'arena_games' : 'public_games',
+          ranked:path === '/api/arena' ? query.get('ranked') === '1' : path === '/api/leaderboard',
+          ...(path === '/api/arena' ? {player:query.get('player')} : {}), offset, limit,
         }));
       } catch {
         return Response.json({detail:'Use a valid page with between 1 and 50 games.'}, {status:422});

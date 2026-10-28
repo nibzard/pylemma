@@ -1,7 +1,7 @@
 import {buildPlayer, BUILD_STAGES} from './build.mjs';
 import {normalizeHandle} from './handle.mjs';
 import { STAGES, requestStage, requestError, failureReport } from './progress.mjs';
-import { ARENA_REFERENCE, REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl, featuredDecision, shortStrategy, averagePoints } from './story.mjs';
+import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl, featuredDecision, shortStrategy, averagePoints, rankLabel } from './story.mjs';
 
 const $ = selector => document.querySelector(selector);
 const status = $('#status');
@@ -181,10 +181,11 @@ function sharing(machine, result) {
   card.append(el('p', "Prisoner's Pylemma", 'eyebrow'), el('h2',machine.name),
     el('p',machine.strategy.length > 160 ? machine.strategy.slice(0,157)+'…' : machine.strategy),
     el('p',result.suite_version === 'arena-v2' ?
-      `${averagePoints(result.total,200)} points per round · 20 rounds against each of 10 opponents.` :
+      `${result.total} points` :
       `${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'}.`, 'lead'));
   const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id,ref:'share'});
-  const post = el('a','Share on X','inspect-button');
+  const rank = el('p',undefined,'share-rank'); rank.hidden=true; card.append(rank);
+  const post = el('a','Share on X','inspect-button share-post');
   post.href = 'https://twitter.com/intent/tweet?' + new URLSearchParams({text:shareText(machine,result),url});
   post.target = '_blank'; post.rel = 'noopener noreferrer';
   post.onclick = () => track('share_click');
@@ -192,6 +193,25 @@ function sharing(machine, result) {
   card.append(post,document.createTextNode(' '),copy);
   return card;
 }
+async function showStanding(machine,result,rankNode,card) {
+  try {
+    const data=await api('/api/arena?ranked=1&limit=1&player='+encodeURIComponent(machine.id));
+    if (!rankNode.isConnected) return;
+    const text=rankLabel(data.standing);
+    rankNode.textContent=text || 'Not listed on this leaderboard.';
+    if (text) {
+      const rank=card.querySelector('.share-rank');
+      rank.textContent=text; rank.hidden=false;
+      const post=card.querySelector('.share-post');
+      const url=new URL(post.href);
+      url.searchParams.set('text',shareText(machine,result,data.standing));
+      post.href=url.href;
+    }
+  } catch {
+    if (rankNode.isConnected) rankNode.textContent='Leaderboard position is currently unavailable.';
+  }
+}
+
 async function copyChallenge(machine, control) {
   track('share_click');
   const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id,ref:'share'});
@@ -299,8 +319,13 @@ function showResult(data) {
     const score = el('p', String(data.result.total), 'score');
     score.append(el('span', `points across ${data.result.matches.length} matches`));
     const roundCount=data.result.matches.reduce((sum,match)=>sum+match.rounds.length,0);
-    summary.append(el('p',`${averagePoints(data.result.total,roundCount)} points per round`,'lead'));
-    summary.append(score, el('p', data.machine.blueprint.summary));
+
+    summary.append(score);
+    const ranked=data.kind === 'arena' && data.result.suite_version === 'arena-v2' && data.machine.public_listing;
+    const position=el('p',ranked ? 'Checking leaderboard position…' : '', 'lead');
+    if (ranked) summary.append(position);
+    summary.append(el('p',data.machine.blueprint.summary),
+      details('Score details',el('p',`${averagePoints(data.result.total,roundCount)} points per round across ${roundCount} rounds.`)));
     shared.append(summary);
     const selected = featuredDecision(data.result.matches,data.machine.name);
     traceDetails(data, summary, selected);
@@ -309,7 +334,7 @@ function showResult(data) {
       const fixed=data.result.suite_version === 'arena-v2';
       summary.append(el('p',fixed ? 'Twenty rounds against each of the same ten opponents.' :
         `Arena v1: ten rounds per opponent. ${presets} of the ten opponents are presets.`,'small'),
-        el('p',fixed ? ARENA_REFERENCE :
+        el('p',fixed ? 'Higher total scores rank first. Equal scores share a rank.' :
           'Legacy entries can face different opponents. Compare only matching game formats.','small'));
     }
     if (data.result.suite_version === 'trust-v1' && data.result.rules_version === 'pd-v1') {
@@ -317,7 +342,9 @@ function showResult(data) {
     }
     const actions = el('div', undefined, 'actions');
     actions.append(button('Revise strategy', () => showBuilder(data.machine), 'primary'));
-    shared.append(actions, sharing(data.machine,data.result), el('h2', 'Where the points came from'));
+    const shareCard=sharing(data.machine,data.result);
+    shared.append(actions, shareCard, el('h2', 'Where the points came from'));
+    if (ranked) void showStanding(data.machine,data.result,position,shareCard);
     for (const match of data.result.matches) {
       shared.append(matchView(match, [data.machine.name, match.opponent], match.preset === false ? undefined : POLICIES[match.opponent]));
     }
@@ -349,7 +376,7 @@ function showResult(data) {
   const listed = ['tournament','arena'].includes(data.kind) ? data.machine.public_listing === true :
     data.machines.every(machine => machine.public_listing === true);
   shared.append(el('p', listed ? 'This completed game is listed publicly.' : 'This game is unlisted. It does not appear in public game lists.', 'small'));
-  shared.append(link('See recent arena results', {leaderboard:'1'}));
+  shared.append(link('See the leaderboard', {leaderboard:'1'}));
 
   shared.append(el('p', 'These points describe this game. They do not measure intelligence or real-world trustworthiness.', 'small'));
   message('');
@@ -413,37 +440,35 @@ async function leaderboard() {
   const rawOffset = Number(params.get('offset') || 0);
   const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
   shared.replaceChildren(el('p', 'The public games', 'eyebrow'),
-    el('h1', all ? 'Every public game.' : 'Recent arena results'));
+    el('h1', all ? 'Every public game.' : 'Leaderboard'));
   const actions = el('div', undefined, 'actions');
-  actions.append(link('Recent arena results', {leaderboard:'1'}),
+  actions.append(link('Leaderboard', {leaderboard:'1'}),
     link('All public games', {leaderboard:'1',view:'all'}),
     button('Create your player', () => showBuilder(), 'primary'));
   actions.querySelectorAll('a')[all ? 1 : 0].setAttribute('aria-current', 'page');
   shared.append(actions);
   const explanation=el('p',all ?
     'Completed public arenas, tournaments, and challenges, newest first.' :
-    'Each strategy plays 20 rounds against the same 10 opponents. Higher scores are better.');
+    'Beat the top score. Every strategy faces the same ten opponents.');
   shared.append(explanation);
-  if (!all) shared.append(el('p','Scores are average points per round. '+ARENA_REFERENCE,'small'));
+  if (!all) shared.append(el('p','Equal scores share a rank. Each entry is a submitted strategy, not a different person.','small'));
   message('Loading public games…');
-  const data = await api(`${all ? '/api/games' : '/api/arena'}?offset=${offset}&limit=20`);
+  const data = await api(`${all ? '/api/games' : '/api/arena'}?offset=${offset}&limit=20${all ? '' : '&ranked=1'}`);
   message('');
-  const mixedFormats=data.entries.some(entry=>entry.suite_version !== 'arena-v2');
-  if (!all && mixedFormats) explanation.textContent='Current arena strategies play 20 rounds against the same 10 opponents. Higher scores are better.';
-  if (!all && mixedFormats) shared.append(el('p','Earlier-format games are labeled separately and use different opponents or round counts.','small'));
   if (!data.entries.length) {
     shared.append(el('p', data.total ? 'There are no games on this page.' :
       'No completed public games yet. Create a player with public listing enabled to add the first one.', 'panel'));
   } else {
-    shared.append(el('p', `${data.total} completed public ${data.total === 1 ? 'game' : 'games'}.`, 'small'));
+    shared.append(el('p',all ? `${data.total} completed public games.` :
+      `${data.total} submitted ${data.total === 1 ? 'strategy' : 'strategies'}.`,'small'));
     const box = el('div', undefined, 'board-scroll');
     box.tabIndex = 0;
     box.setAttribute('role', 'region');
     box.setAttribute('aria-label', 'Scrollable table of public games');
     const table = el('table', undefined, all ? 'board' : 'board arena-board');
-    table.append(el('caption', all ? 'All completed public games' : 'Strategies and scores · newest first'));
+    table.append(el('caption', all ? 'All completed public games' : 'Highest scores first'));
     const head = el('tr');
-    for (const title of all ? ['Game', 'Players', 'Points', 'Played', 'Replay'] : [...(mixedFormats ? ['Format'] : []), 'Player', 'Strategy', 'Score', 'Replay', 'Challenge']) {
+    for (const title of all ? ['Game', 'Players', 'Points', 'Played', 'Replay'] : ['Rank & player', 'Strategy', 'Points', 'Replay', 'Challenge']) {
       const th = el('th', title); th.scope = 'col'; head.append(th);
     }
     const thead = el('thead'); thead.append(head); table.append(thead);
@@ -455,14 +480,13 @@ async function leaderboard() {
           el('td',entry.players.map(player=>player.name).join(' vs ')),
           el('td',entry.scores.join(' / ')));
       } else {
-        if (mixedFormats) row.append(el('td',entry.suite_version === 'arena-v2' ? 'Current arena' : 'Earlier arena','format-cell'));
-        row.append(el('td',entry.players[0].name,'player-cell'));
+        row.append(el('td',`#${entry.rank} · ${entry.players[0].name}`,'player-cell'));
         const strategy=entry.players[0].strategy || '';
         const cell=el('td',undefined,'strategy-cell');
         cell.append(el('p',shortStrategy(strategy) || 'Open the replay to read these rules.'));
         if (strategy.length > 100) cell.append(details('Read full strategy',el('p',strategy)));
         row.append(cell,el('td',
-          averagePoints(entry.scores[0],entry.suite_version === 'arena-v2' ? 200 : 100)+' points/round','board-score'));
+          entry.scores[0]+' points','board-score'));
       }
       if (all) {
         const played = el('td');

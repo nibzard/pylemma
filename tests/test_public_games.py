@@ -102,4 +102,39 @@ def test_public_api_indexes_only_completed_consented_games(tmp_path: Path) -> No
         assert client.get("/api/leaderboard?limit=1000").status_code == 422
         assert client.get("/api/games?offset=-1").status_code == 422
         assert client.get("/api/games?offset=100").json()["entries"] == []
+        assert (
+            client.get("/api/arena?ranked=1&player=" + public["id"]).json()["standing"]
+            is None
+        )
+        assert client.get("/api/arena?player=" + public["id"]).status_code == 422
+        assert client.get("/api/arena?ranked=1&player=bad").status_code == 422
         assert builder.calls == 2
+
+
+def test_arena_rank_excludes_old_formats_and_precedes_pagination() -> None:
+    from pylemma.public_games import page
+
+    rows = [
+        {
+            "replay_id": key,
+            "kind": "arena",
+            "suite_version": suite,
+            "scores": [score],
+            "players": [{"id": key}],
+        }
+        for key, score, suite in [
+            ("a", 564, "arena-v2"),
+            ("b", 564, "arena-v2"),
+            ("c", 425, "arena-v2"),
+            ("old", 900, "arena-v1"),
+        ]
+    ]
+    first = page(rows, "arena", 0, 1, "c")
+    assert first["total"] == 3
+    assert first["entries"][0]["rank"] == 1
+    assert first["standing"] == {"rank": 3, "total": 3}
+    assert page(rows, "arena", 1, 1)["entries"][0]["rank"] == 1
+    assert page(rows, "arena", 2, 1)["entries"][0]["rank"] == 3
+    assert page(rows, "arena", 0, 1, "old")["standing"] is None
+    assert page(rows, "arena", 0, 1, "unlisted")["standing"] is None
+    assert all("rank" not in row for row in rows)

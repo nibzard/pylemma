@@ -41,7 +41,9 @@ The public status endpoint reports actual stages and recovers a saved player.
 New players declare arena-v2 and face ten fixed opponents for twenty rounds.
 Missing player versions retain arena-v1 and its original opponent selection.
 Historical tournaments and direct challenges retain ten rounds.
-Comparisons use points per round and distinguish different game formats.
+Public arena-v2 comparisons use total points and current competition rank.
+Equal scores share a rank. Rank the entire current public set before pagination.
+Exclude earlier formats and unlisted entries. Keep points per round in result details.
 A page containing only the current arena explains its common opponents without an internal version label.
 Saved replays remain immutable and render their recorded round counts.
 These rules supersede conflicting round counts and opponent selection below.

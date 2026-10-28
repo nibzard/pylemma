@@ -21,8 +21,8 @@ export function publicEntry(id, data) {
     scores, suite_version:result.suite_version ?? null, rounds_per_match:roundsPerMatch, created_at:data.created_at ?? null};
 }
 
-export function publicPage(entries, ranked, offset, limit) {
-  const rows = entries.filter(row=>!ranked || row.kind === 'tournament').map(row=>({...row}));
+export function publicPage(entries, ranked, offset, limit, player=null) {
+  const rows = entries.filter(row=>!ranked || (ranked === 'arena' ? row.kind === 'arena' && row.suite_version === 'arena-v2' : row.kind === 'tournament')).map(row=>({...row}));
   if (ranked) {
     rows.sort((a,b)=>b.scores[0]-a.scores[0] || a.replay_id.localeCompare(b.replay_id));
     let rank=0, previous=null;
@@ -33,5 +33,7 @@ export function publicPage(entries, ranked, offset, limit) {
   } else rows.sort((a,b)=>(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0) ||
     b.replay_id.localeCompare(a.replay_id));
   const end=offset+limit;
-  return {entries:rows.slice(offset,end), total:rows.length, next_offset:end<rows.length?end:null};
+  const selected=player && ranked ? rows.find(row=>row.players.some(item=>item.id === player)) : null;
+  return {entries:rows.slice(offset,end), total:rows.length, next_offset:end<rows.length?end:null,
+    ...(player ? {standing:selected ? {rank:selected.rank,total:rows.length} : null} : {})};
 }

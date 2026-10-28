@@ -92,9 +92,9 @@ test('current arena shares explain the score without internal version labels',as
   const {shareText,shortStrategy,averagePoints}=await import('../../src/pylemma/web/static/story.mjs');
   const text=shareText({name:'@nibzard',strategy:'Betray first and last. Otherwise copy.'},
     {suite_version:'arena-v2',total:425,matches:Array(10)});
-  assert.match(text,/2.13 points per round/);
+  assert.match(text,/425 points/);
   assert.doesNotMatch(text,/\/5|out of 5/);
-  assert.match(text,/20 rounds, 10 fixed opponents/);
+  assert.doesNotMatch(text,/points per round|#1/);
   assert.match(text,/Betray first and last/);
   assert.doesNotMatch(text,/arena-v2|Arena v2|\\n/);
   assert.equal(text.split('\n').length,3);
@@ -106,4 +106,13 @@ test('current arena shares explain the score without internal version labels',as
   const long=shareText({name:'x'.repeat(60),strategy:'y'.repeat(1000)},
     {suite_version:'arena-v2',total:1000,matches:Array(10)});
   assert.ok(long.length + 24 <= 280);
+});
+
+test('rank labels and sharing use valid current standings',async()=>{
+  const {rankLabel,shareText}=await import('../../src/pylemma/web/static/story.mjs');
+  assert.equal(rankLabel({rank:1,total:5}),'#1 of 5 strategies');
+  assert.equal(rankLabel({rank:1,total:1}),'#1 of 1 strategy');
+  for (const value of [null,{rank:0,total:5},{rank:6,total:5}]) assert.equal(rankLabel(value),'');
+  assert.match(shareText({name:'@x',strategy:'Copy.'},
+    {suite_version:'arena-v2',total:564},{rank:1,total:5}),/564 points[\s\S]*#1 of 5 strategies/);
 });

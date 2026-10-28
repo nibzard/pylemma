@@ -34,6 +34,10 @@ test('arena reads and invalid requests never start the container',async()=>{
   const worker=new Pylemma({storage:{get:async()=>null,list:async()=>new Map()}},{});
   assert.equal((await worker.fetch(request('/api/arena'))).status,200);
   assert.equal((await worker.fetch(request('/api/arena?limit=51'))).status,422);
+  const ranked=await worker.fetch(request('/api/arena?ranked=1&player='+id));
+  assert.equal(ranked.status,200);
+  assert.equal((await ranked.json()).standing,null);
+  assert.equal((await worker.fetch(request('/api/arena?ranked=1&player=bad'))).status,422);
   assert.equal((await worker.fetch(request('/api/arena',{machine_id:'bad'}))).status,422);
   assert.equal((await worker.fetch(request('/api/events',{event:'unknown',replay_id:replay}))).status,422);
   assert.equal((await worker.fetch(request('/api/events',{event:'share_click',replay_id:replay}))).status,404);

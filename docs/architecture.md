@@ -352,8 +352,11 @@ Result highlights select recorded recovery rounds without claiming a player's in
 Public player summaries include the submitted strategy.
 Older Worker summaries receive missing strategy text from the saved public player during reads.
 This enrichment does not rewrite replays or change publication consent.
-The recent results page omits version labels when every entry uses the current fixed suite.
-Mixed formats retain a visible distinction.
-Scores show average points per round without an out-of-five rating.
-The current arena uses always cooperating as a reference: 501 points over 200 rounds, displayed as 2.51.
+The leaderboard shows total points and current competition ranks.
+Only public arena-v2 entries participate. Equal scores share a rank: 1, 1, 3.
+Rank the whole set before pagination. Points per round remain in expandable result details.
+The chronological public games view retains earlier formats.
+The arena API accepts `ranked=1` and an optional `player` UUID.
+The response includes that player's standing independently of the selected page.
+Ranks can change when new strategies enter. Shared text captures the rank when viewed.
 Mobile rows stack the player, score, strategy, and actions without horizontal scrolling.

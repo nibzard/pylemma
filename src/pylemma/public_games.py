@@ -1,7 +1,7 @@
 """Small public read models. Missing consent always means an unlisted record."""
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 
 def entry(identifier: str, data: dict[str, Any]) -> dict[str, Any] | None:
@@ -55,10 +55,23 @@ def entry(identifier: str, data: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def page(
-    entries: list[dict[str, Any]], ranked: bool, offset: int, limit: int
+    entries: list[dict[str, Any]],
+    ranked: bool | Literal["arena"],
+    offset: int,
+    limit: int,
+    player: str | None = None,
 ) -> dict[str, Any]:
     """Use competition ranks: equal scores share a rank, followed by a gap."""
-    rows = [dict(row) for row in entries if not ranked or row["kind"] == "tournament"]
+    rows = [
+        dict(row)
+        for row in entries
+        if not ranked
+        or (
+            row["kind"] == "arena" and row.get("suite_version") == "arena-v2"
+            if ranked == "arena"
+            else row["kind"] == "tournament"
+        )
+    ]
     if ranked:
         rows.sort(key=lambda row: (-row["scores"][0], row["replay_id"]))
         rank = 0
@@ -77,10 +90,31 @@ def page(
 
         rows.sort(key=order, reverse=True)
     end = offset + limit
+    selected = (
+        next(
+            (
+                row
+                for row in rows
+                if any(item["id"] == player for item in row["players"])
+            ),
+            None,
+        )
+        if player and ranked
+        else None
+    )
     return {
         "entries": rows[offset:end],
         "total": len(rows),
         "next_offset": end if end < len(rows) else None,
+        **(
+            {
+                "standing": {"rank": selected["rank"], "total": len(rows)}
+                if selected
+                else None
+            }
+            if player
+            else {}
+        ),
     }
 
 
