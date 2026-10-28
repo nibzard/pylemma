@@ -1,5 +1,5 @@
 import { Container } from '@cloudflare/containers';
-import { operate, validId } from './storage.mjs';
+import { operate, validId, DAILY_GENERATIONS, DAILY_CHALLENGES, MAX_GENERATIONS, MAX_CHALLENGES } from './storage.mjs';
 import { inspectLink } from './trace-links.mjs';
 
 export class Pylemma extends Container {
@@ -15,7 +15,7 @@ export class Pylemma extends Container {
       LOGFIRE_TOKEN: env.LOGFIRE_TOKEN,
       LOGFIRE_BASE_URL: env.LOGFIRE_BASE_URL,
       PYLEMMA_LOGFIRE_PROJECT_URL: env.LOGFIRE_PROJECT_URL,
-      PYLEMMA_DAILY_GENERATIONS: '20',
+      PYLEMMA_DAILY_GENERATIONS: String(DAILY_GENERATIONS),
       PYLEMMA_STORE_URL: 'https://pylemma.aor.fyi',
       PYLEMMA_STORE_TOKEN: env.STORE_TOKEN,
     };
@@ -144,12 +144,12 @@ export class Pylemma extends Container {
     }
     const lifetime = await this.ctx.storage.get(path === '/api/machines' ?
       'lifetime:generation' : 'lifetime:challenge') || 0;
-    if (lifetime >= (path === '/api/machines' ? 80 : 1600)) {
+    if (lifetime >= (path === '/api/machines' ? MAX_GENERATIONS : MAX_CHALLENGES)) {
       return Response.json({detail:'The demonstration allowance is exhausted.'}, {status:429,headers:{'X-Game-Outcome':'lifetime_quota'}});
     }
     const kind = path === '/api/machines' ? 'generation' : 'challenge';
     const daily = await this.ctx.storage.get(`daily:${new Date().toISOString().slice(0,10)}:${kind}`) || 0;
-    if (daily >= (kind === 'generation' ? 20 : 400)) {
+    if (daily >= (kind === 'generation' ? DAILY_GENERATIONS : DAILY_CHALLENGES)) {
       return Response.json({detail:'The daily demonstration quota is exhausted.'}, {status:429,headers:{'X-Game-Outcome':'daily_quota'}});
     }
     if (this.busy) return Response.json({detail:'Another operation is running. Try again shortly.'}, {status:429,headers:{'X-Game-Outcome':'busy'}});

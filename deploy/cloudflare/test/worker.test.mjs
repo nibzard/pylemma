@@ -128,3 +128,20 @@ test('idle expiry preserves a request waiting for container startup',async(t)=>{
   await worker.onActivityExpired();
   assert.equal(destroyed,1);
 });
+
+
+test('generation admission agrees with the new daily and lifetime limits',async(t)=>{
+  t.mock.method(console,'log',()=>{});
+  const day=new Date().toISOString().slice(0,10);
+  const records=new Map([['daily:'+day+':generation',99],['lifetime:generation',99]]);
+  const worker=new Pylemma({storage:{get:async key=>records.get(key)}},{});
+  const input={name:'Test',strategy:'Cooperate',public_acknowledged:true};
+  assert.equal(worker.envVars.PYLEMMA_DAILY_GENERATIONS,'100');
+  assert.equal((await worker.fetch(request('/api/machines',input))).status,200);
+  records.set('daily:'+day+':generation',100);
+  assert.equal((await worker.fetch(request('/api/machines',input))).status,429);
+  records.set('daily:'+day+':generation',0);
+  records.set('lifetime:generation',400);
+  assert.equal((await worker.fetch(request('/api/machines',input))).status,429);
+  assert.equal(worker.starts,1);
+});

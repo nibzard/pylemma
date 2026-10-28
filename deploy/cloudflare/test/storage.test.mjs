@@ -21,11 +21,11 @@ class Storage {
 
 test('reservations are atomic and retain a lifetime ceiling across dates', async()=>{
   const storage = new Storage();
-  const request = {operation:'reserve',kind:'generation',limit:20};
-  const outcomes = await Promise.all(Array.from({length:30},()=>operate(storage,request,new Date('2026-10-28'))));
-  assert.equal(outcomes.filter(Boolean).length,20);
+  const request = {operation:'reserve',kind:'generation',limit:100};
+  const outcomes = await Promise.all(Array.from({length:110},()=>operate(storage,request,new Date('2026-10-28'))));
+  assert.equal(outcomes.filter(Boolean).length,100);
   for (let day=29; day<=31; day++) {
-    for(let i=0;i<20;i++) assert.equal(await operate(storage,request,new Date(`2026-10-${day}`)),true);
+    for(let i=0;i<100;i++) assert.equal(await operate(storage,request,new Date(`2026-10-${day}`)),true);
   }
   assert.equal(await storage.get('lifetime:generation'),MAX_GENERATIONS);
   assert.equal(await operate(storage,request,new Date('2026-11-01')),false);
@@ -89,4 +89,26 @@ test('arena entries are unique, consented, chronological, and select distinct re
   assert.equal(page.entries[0].rank,undefined); assert.equal(page.next_offset,2);
   assert.equal((await operate(storage,{operation:'arena_entry',id:id(1)})).replay_id,id(21));
   assert.equal(await operate(storage,{operation:'arena_entry',id:id(99)}),null);
+});
+
+
+test('existing counts survive the daily limit increase',async()=>{
+  const storage=new Storage();
+  await storage.put({'daily:2026-10-28:generation':20,'lifetime:generation':20});
+  const request={operation:'reserve',kind:'generation',limit:1000};
+  const outcomes=await Promise.all(Array.from({length:90},()=>operate(storage,request,new Date('2026-10-28'))));
+  assert.equal(outcomes.filter(Boolean).length,80);
+  const status=await operate(storage,{operation:'status'});
+  assert.equal(status.generations,100);
+  assert.equal(status.reserved_micro_usd,1_000_000);
+  assert.equal(status.budget_micro_usd,4_000_000);
+});
+
+test('generation changes preserve challenge limits',async()=>{
+  const storage=new Storage();
+  const request={operation:'reserve',kind:'challenge',limit:2000};
+  await storage.put({'daily:2026-10-28:challenge':400,'lifetime:challenge':400});
+  assert.equal(await operate(storage,request,new Date('2026-10-28')),false);
+  await storage.put('lifetime:challenge',1600);
+  assert.equal(await operate(storage,request,new Date('2026-10-29')),false);
 });

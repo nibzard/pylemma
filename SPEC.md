@@ -1284,8 +1284,8 @@ A SQLite-backed Durable Object owns machine records, replay records, quotas, and
 The container accesses this boundary through authenticated private requests.
 Local SQLite remains supported for local installations.
 
-Generation has a daily limit of twenty and a lifetime limit of eighty.
-Each attempt reserves USD 0.05 against a USD 4 allowance before the provider call.
+Generation has a daily limit of one hundred and a lifetime limit of four hundred.
+Each attempt reserves USD 0.01 against a USD 4 allowance before the provider call.
 Failed and uncertain attempts retain their reservation. The lifetime allowance does not reset at midnight or deployment.
 Challenges have daily and lifetime limits of four hundred and sixteen hundred.
 The initial authorization is at most USD 5, including verification and an infrastructure buffer.

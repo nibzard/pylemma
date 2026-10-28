@@ -2,8 +2,11 @@ import { publicEntry, publicPage } from './public-games.mjs';
 
 /** Persist records and reserve allowances before external work starts. */
 export const BUDGET_MICRO_USD = 4_000_000;
-export const RESERVATION_MICRO_USD = 50_000;
+export const RESERVATION_MICRO_USD = 10_000;
 export const MAX_GENERATIONS = BUDGET_MICRO_USD / RESERVATION_MICRO_USD;
+export const DAILY_GENERATIONS = 100;
+export const DAILY_CHALLENGES = 400;
+export const MAX_CHALLENGES = 1600;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validId = id => typeof id === 'string' && UUID.test(id);
 
@@ -49,8 +52,8 @@ export async function operate(storage, input, now = new Date()) {
   if (input.operation === 'reserve') {
     if (!['generation', 'challenge'].includes(input.kind) ||
         !Number.isInteger(input.limit) || input.limit < 1) throw new Error('Invalid reservation.');
-    const dailyLimit = Math.min(input.limit, input.kind === 'generation' ? 20 : 400);
-    const lifetimeLimit = input.kind === 'generation' ? MAX_GENERATIONS : MAX_GENERATIONS * 20;
+    const dailyLimit = Math.min(input.limit, input.kind === 'generation' ? DAILY_GENERATIONS : DAILY_CHALLENGES);
+    const lifetimeLimit = input.kind === 'generation' ? MAX_GENERATIONS : MAX_CHALLENGES;
     return storage.transaction(async tx => {
       const key = `daily:${now.toISOString().slice(0,10)}:${input.kind}`;
       const daily = await tx.get(key) || 0;

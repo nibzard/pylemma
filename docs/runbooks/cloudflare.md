@@ -7,8 +7,8 @@ The container disk contains no authoritative machine records.
 
 ## Spending controls
 
-The deployment permits twenty generations per day and eighty generations for its lifetime.
-Each generation reserves USD 0.05 against a USD 4 allowance before the provider request.
+The deployment permits one hundred generations per day and four hundred generations for its lifetime.
+Each generation reserves USD 0.01 against a USD 4 allowance before the provider request.
 Failed requests retain their reservations. Restarting or deploying does not reset these counters.
 Challenges permit four hundred daily runs and sixteen hundred lifetime runs.
 
