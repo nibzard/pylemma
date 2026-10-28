@@ -1,0 +1,8 @@
+Generate each machine once to give visitors a stable strategy to revise
+and share. Fresh Monty sessions isolate every decision. The host owns
+observations and scoring. Hosted startup requires Logfire configuration.
+
+Decision: docs/decisions/004-generated-machines.md
+Evidence: docs/development/2026-10-28-machines.md
+Validation: 211 offline tests passed; lint, types, JavaScript syntax,
+and package builds passed.
