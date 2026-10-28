@@ -1,0 +1,1 @@
+Accepted: Run Monty in one Cloudflare container and persist immutable records and spending reservations in a Durable Object. See docs/decisions/005-cloudflare-container-storage.md for constraints, alternatives, consequences, and evidence.
