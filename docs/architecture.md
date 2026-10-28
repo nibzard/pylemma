@@ -354,5 +354,6 @@ Older Worker summaries receive missing strategy text from the saved public playe
 This enrichment does not rewrite replays or change publication consent.
 The recent results page omits version labels when every entry uses the current fixed suite.
 Mixed formats retain a visible distinction.
-Scores use points per round on the per-round zero-to-five scale, not a percentile or rating.
+Scores show average points per round without an out-of-five rating.
+The current arena uses always cooperating as a reference: 501 points over 200 rounds, displayed as 2.51.
 Mobile rows stack the player, score, strategy, and actions without horizontal scrolling.

@@ -92,7 +92,8 @@ test('current arena shares explain the score without internal version labels',as
   const {shareText,shortStrategy,averagePoints}=await import('../../src/pylemma/web/static/story.mjs');
   const text=shareText({name:'@nibzard',strategy:'Betray first and last. Otherwise copy.'},
     {suite_version:'arena-v2',total:425,matches:Array(10)});
-  assert.match(text,/2.13\/5 points per round/);
+  assert.match(text,/2.13 points per round/);
+  assert.doesNotMatch(text,/\/5|out of 5/);
   assert.match(text,/20 rounds, 10 fixed opponents/);
   assert.match(text,/Betray first and last/);
   assert.doesNotMatch(text,/arena-v2|Arena v2|\\n/);
@@ -101,6 +102,7 @@ test('current arena shares explain the score without internal version labels',as
   assert.equal(shortStrategy('a'.repeat(101)).length,100);
   assert.equal(averagePoints(509,200),'2.55');
   assert.equal(averagePoints(517,200),'2.59');
+  assert.equal(averagePoints(501,200),'2.51');
   const long=shareText({name:'x'.repeat(60),strategy:'y'.repeat(1000)},
     {suite_version:'arena-v2',total:1000,matches:Array(10)});
   assert.ok(long.length + 24 <= 280);

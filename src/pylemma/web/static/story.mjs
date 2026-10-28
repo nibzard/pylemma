@@ -1,4 +1,5 @@
 /** Facts derived from completed outcomes. Never infer motives from choices. */
+export const ARENA_REFERENCE = 'Always cooperating earns 2.51 points per round in the current arena.';
 export const REFERENCES = [
   {name: 'Always cooperate', score: 81},
   {name: 'Always betray', score: 78},
@@ -81,7 +82,7 @@ export function averagePoints(total,rounds) {
 export function shareText(machine, result) {
   const rule = shortStrategy(machine.strategy,80);
   if (result.suite_version === 'arena-v2') {
-    return `${machine.name}: “${rule}”\n${averagePoints(result.total,200)}/5 points per round. 20 rounds, 10 fixed opponents.\nTrust or betray? Can you do better?`;
+    return `${machine.name}: “${rule}”\n${averagePoints(result.total,200)} points per round. 20 rounds, 10 fixed opponents.\nTrust or betray? Can you do better?`;
   }
   return `${machine.name}: “${rule}”\n${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'} in Prisoner’s Pylemma.\nCan your strategy do better?`;
 }

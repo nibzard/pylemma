@@ -1,7 +1,7 @@
 import {buildPlayer, BUILD_STAGES} from './build.mjs';
 import {normalizeHandle} from './handle.mjs';
 import { STAGES, requestStage, requestError, failureReport } from './progress.mjs';
-import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl, featuredDecision, shortStrategy, averagePoints } from './story.mjs';
+import { ARENA_REFERENCE, REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl, featuredDecision, shortStrategy, averagePoints } from './story.mjs';
 
 const $ = selector => document.querySelector(selector);
 const status = $('#status');
@@ -181,7 +181,7 @@ function sharing(machine, result) {
   card.append(el('p', "Prisoner's Pylemma", 'eyebrow'), el('h2',machine.name),
     el('p',machine.strategy.length > 160 ? machine.strategy.slice(0,157)+'…' : machine.strategy),
     el('p',result.suite_version === 'arena-v2' ?
-      `${averagePoints(result.total,200)} / 5 points per round · 20 rounds against each of 10 opponents.` :
+      `${averagePoints(result.total,200)} points per round · 20 rounds against each of 10 opponents.` :
       `${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'}.`, 'lead'));
   const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id,ref:'share'});
   const post = el('a','Share on X','inspect-button');
@@ -299,7 +299,7 @@ function showResult(data) {
     const score = el('p', String(data.result.total), 'score');
     score.append(el('span', `points across ${data.result.matches.length} matches`));
     const roundCount=data.result.matches.reduce((sum,match)=>sum+match.rounds.length,0);
-    summary.append(el('p',`${averagePoints(data.result.total,roundCount)} / 5 points per round`,'lead'));
+    summary.append(el('p',`${averagePoints(data.result.total,roundCount)} points per round`,'lead'));
     summary.append(score, el('p', data.machine.blueprint.summary));
     shared.append(summary);
     const selected = featuredDecision(data.result.matches,data.machine.name);
@@ -309,7 +309,7 @@ function showResult(data) {
       const fixed=data.result.suite_version === 'arena-v2';
       summary.append(el('p',fixed ? 'Twenty rounds against each of the same ten opponents.' :
         `Arena v1: ten rounds per opponent. ${presets} of the ten opponents are presets.`,'small'),
-        el('p',fixed ? 'Each round awards 0 to 5 points. Both players cooperating earns each 3 points.' :
+        el('p',fixed ? ARENA_REFERENCE :
           'Legacy entries can face different opponents. Compare only matching game formats.','small'));
     }
     if (data.result.suite_version === 'trust-v1' && data.result.rules_version === 'pd-v1') {
@@ -424,7 +424,7 @@ async function leaderboard() {
     'Completed public arenas, tournaments, and challenges, newest first.' :
     'Each strategy plays 20 rounds against the same 10 opponents. Higher scores are better.');
   shared.append(explanation);
-  if (!all) shared.append(el('p','Scores are average points per round, from 0 to 5. Both players cooperating earns each 3 points.','small'));
+  if (!all) shared.append(el('p','Scores are average points per round. '+ARENA_REFERENCE,'small'));
   message('Loading public games…');
   const data = await api(`${all ? '/api/games' : '/api/arena'}?offset=${offset}&limit=20`);
   message('');
@@ -462,7 +462,7 @@ async function leaderboard() {
         cell.append(el('p',shortStrategy(strategy) || 'Open the replay to read these rules.'));
         if (strategy.length > 100) cell.append(details('Read full strategy',el('p',strategy)));
         row.append(cell,el('td',
-          averagePoints(entry.scores[0],entry.suite_version === 'arena-v2' ? 200 : 100)+' / 5','board-score'));
+          averagePoints(entry.scores[0],entry.suite_version === 'arena-v2' ? 200 : 100)+' points/round','board-score'));
       }
       if (all) {
         const played = el('td');
