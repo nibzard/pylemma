@@ -83,3 +83,27 @@ The immutable `public_listing` field controls discovery. Missing fields mean fal
 Do not backfill old unlisted records into the public index.
 Public summaries contain names, scores, and replay links. Full strategies and generated code remain available through the replay.
 Verify an unlisted replay remains readable but absent from both public endpoints after deployments.
+
+## Inspect in Logfire links
+
+`LOGFIRE_PROJECT_URL` configures ordinary account-required trace navigation.
+`LOGFIRE_PUBLIC_TRACES` contains a JSON object mapping trace identifiers to reviewed public URLs.
+Both settings live in Worker variables. Never place a runtime token or browser handoff in either setting.
+The public reference map does not publish a trace by itself.
+
+To attach a public sharing link:
+
+1. Create the trace-specific public link through Logfire's signed-in sharing controls.
+2. Open it in a fresh browser session and verify the intended replay identifier and complete trace.
+3. Complete the content review in [the trace review procedure](trace-review.md).
+4. Add the exact trace identifier and public URL to `LOGFIRE_PUBLIC_TRACES` in the Wrangler configuration.
+5. Deploy the Worker and verify the replay's `logfire_access` is `public`.
+6. Click Inspect in Logfire while signed out and confirm the intended trace opens.
+
+The reviewed URL can include one `spanId` parameter on the verified public-trace path.
+This highlights a span while still sharing the complete trace.
+Other games retain account-required links until their own public links are created and attached.
+No automatic per-game public-link API has been verified.
+
+A public project is public within its organization. Ordinary inspection links still require project access.
+A public trace link grants access to that trace without an invitation or sign-in.

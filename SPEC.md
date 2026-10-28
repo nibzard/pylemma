@@ -1354,3 +1354,22 @@ Save the compact public summary atomically with each qualifying replay in Cloudf
 Local SQLite derives the equivalent read model from stored replays.
 Public reads do not call a model, execute a strategy, or start the container.
 Retain the current palette, borders, and existing game flow while adding the leaderboard navigation and table.
+
+## Inspect in Logfire contract
+
+The current phase adds a prominent Inspect in Logfire action near each completed result summary.
+Replay read models include `logfire_url` and `logfire_access`.
+Access is public only when a reviewed public trace reference exists for that exact trace identifier.
+Prefer the stored public reference or the operator's reviewed reference map.
+Otherwise, generate an account-required trace link from the configured Logfire project URL and validated trace identifier.
+Use the supported `q` filter. Add an hour on either side of the completion time when that time exists.
+Missing trace identifiers or project configuration produce an unavailable action rather than an invented link.
+The interface states whether a Logfire account is required. Links open in another tab without opener access.
+Newly completed games load their saved replay before rendering the inspection action.
+
+Accept the verified public-trace highlight parameter `spanId` only as sixteen hexadecimal characters.
+That parameter is permitted only on a public-trace path with a universally unique identifier.
+Reject unrelated parameters, duplicate parameters, fragments, credentials, and ports.
+Public sharing exposes the complete trace. A selected span does not restrict disclosure to that span.
+Creating account-free public links remains an operator action through Logfire's documented sharing controls.
+Do not describe ordinary project links, project visibility, or connected-app handoffs as account-free public sharing.

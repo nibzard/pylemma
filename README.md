@@ -263,3 +263,11 @@ The choice is optional and unchecked by default. Existing unlisted games remain 
 Challenges appear publicly only when both players permit listing.
 Repeated tournaments count as separate games. Equal scores share a rank.
 These rankings use the fixed opponent suite and do not verify a player's human identity.
+
+## Inspect game execution
+
+Completed results show **Inspect in Logfire** near the score.
+A reviewed public trace link opens without an account. Other trace links state that Logfire access is required.
+The public example is [The open hand's tournament](https://pylemma.aor.fyi/?replay=bb4976a0-f335-4fec-b795-ac279ce7feb4).
+Public links currently require manual creation through Logfire's sharing controls for each trace.
+See [the inspection runbook](docs/runbooks/cloudflare.md#inspect-in-logfire-links) to attach another reviewed link.

@@ -20,6 +20,7 @@ from pylemma.machine_store import MachineStore
 from pylemma.machines import Blueprint, Machine, Sandbox, play, tournament
 from pylemma.remote_store import RemoteMachineStore
 from pylemma.telemetry import configure, match_context, span
+from pylemma.trace_links import inspect_link
 
 
 class Builder(Protocol):
@@ -52,6 +53,9 @@ def create_app(
     builder: Builder,
     telemetry: logfire.Logfire,
     daily_limit: int,
+    *,
+    logfire_project_url: str | None = None,
+    public_trace_urls: dict[str, str] | None = None,
 ) -> FastAPI:
     """Explicit dependencies allow offline tests without weakening hosted startup."""
     if telemetry is None or daily_limit < 1:
@@ -227,7 +231,9 @@ def create_app(
     @app.get("/api/replays/{identifier}")
     def replay(identifier: UUID) -> dict[str, Any]:
         try:
-            return store.read(identifier)
+            return inspect_link(
+                store.read(identifier), logfire_project_url, public_trace_urls
+            )
         except KeyError:
             raise HTTPException(404, "Replay not found.") from None
 
@@ -258,4 +264,5 @@ def hosted() -> FastAPI:
         Generator(os.environ["OPENAI_API_KEY"]),
         configure(),
         quota,
+        logfire_project_url=os.environ.get("PYLEMMA_LOGFIRE_PROJECT_URL"),
     )

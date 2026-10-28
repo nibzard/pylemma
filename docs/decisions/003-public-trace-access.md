@@ -78,3 +78,11 @@ Do not rewrite an unfamiliar link or guess its path.
 
 Reconsider this decision after verified account capabilities or a supported sharing contract changes.
 Keep optional project-wide access separate from the reviewed-link release gate.
+
+## Inspection update on 2026-10-28
+
+[Decision 008](008-inspect-game-trace.md) replaces the rule that inspection disappears without a public reference.
+The interface now distinguishes account-required trace navigation from reviewed public sharing.
+The user supplies a public link whose signed-out access, trace identity, and complete exported content are verified.
+A narrow highlight parameter exception preserves that actual Logfire link.
+The documented publication workflow remains manual and trace-specific.

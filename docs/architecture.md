@@ -258,3 +258,13 @@ The Durable Object saves summaries in `public:` keys within the replay transacti
 Public leaderboard and game-history reads access those compact entries without starting the container.
 Tournaments share one score comparison. Challenges appear only in chronological history.
 A preview has no public game entry. Both challenge participants must permit discovery before their game is listed.
+
+## Trace inspection links
+
+`trace_links.py` decorates local replay reads with a validated URL and explicit access mode.
+`deploy/cloudflare/trace-links.mjs` applies the equivalent contract to hosted replay reads.
+The Worker uses a configured project URL and a reviewed public reference map keyed by exact trace identifier.
+These are navigation settings, not credentials. They do not change stored game outcomes or public listing consent.
+The browser reloads a saved replay after completion so new games receive the same inspection metadata as shared replays.
+Public sharing links take precedence over ordinary project trace filters.
+Only the verified public-trace path accepts the narrow `spanId` highlight parameter.

@@ -101,13 +101,25 @@ async function copyChallenge(machine, control) {
   } catch { message('Your challenge link: ' + url, true); }
 }
 function traceDetails(data, container) {
-  if (data.public_trace_url) {
-    const node = el('a', 'Inspect this game in Logfire');
-    node.href = data.public_trace_url;
-    node.rel = 'noopener noreferrer';
-    container.append(node, el('p', 'See the generated code, the information each player received, and the choices it returned.', 'small'));
+  const action = data.logfire_url ? el('a', 'Inspect in Logfire', 'inspect-button') :
+    el('button', 'Inspect in Logfire');
+  if (data.logfire_url) {
+    action.href = data.logfire_url;
+    action.target = '_blank';
+    action.rel = 'noopener noreferrer';
+  } else {
+    action.type = 'button';
+    action.disabled = true;
   }
+  const box = el('div', undefined, 'inspection');
+  box.append(action, el('p', data.logfire_access === 'public' ?
+    'Open the complete game trace. No Logfire account is needed.' :
+    data.logfire_url ? 'A Logfire account with access to this project is required.' :
+    'The Logfire link for this game is not available.', 'small'));
+  box.append(el('p', 'Inspect the information each player received, its returned choices, and execution timing.', 'small'));
+  container.append(box);
 }
+
 function matchView(match, names, policy) {
   const card = el('article', undefined, 'panel');
   card.append(el('h3', names.join(' vs ')));
@@ -171,6 +183,7 @@ function showResult(data) {
     score.append(el('span', 'points across three matches'));
     summary.append(score, el('p', data.machine.blueprint.summary));
     shared.append(summary);
+    traceDetails(data, summary);
     if (data.result.suite_version === 'trust-v1' && data.result.rules_version === 'pd-v1') {
       shared.append(refsView(data.result.total));
     }
@@ -190,7 +203,9 @@ function showResult(data) {
     const winner = names[data.result.totals[0] > data.result.totals[1] ? 0 : 1];
     summary.append(el('h1', equal ? 'A draw. What would you change?' : `${winner} earned more points.`));
     summary.append(el('p', names.join(' vs '), 'lead'));
-    shared.append(summary, matchView(data.result, names));
+    shared.append(summary);
+    traceDetails(data, summary);
+    shared.append(matchView(data.result, names));
     const actions = el('div', undefined, 'actions');
     data.machines.forEach(machine => actions.append(link('Challenge ' + machine.name, {challenge:machine.id})));
     shared.append(actions);
@@ -204,7 +219,7 @@ function showResult(data) {
     data.machines.every(machine => machine.public_listing === true);
   shared.append(el('p', listed ? 'This completed game is listed publicly.' : 'This game is unlisted. It does not appear in public game lists.', 'small'));
   shared.append(link('See the global leaderboard', {leaderboard:'1'}));
-  traceDetails(data, shared);
+
   shared.append(el('p', 'These points describe this game. They do not measure intelligence or real-world trustworthiness.', 'small'));
   message('');
 }
@@ -213,8 +228,7 @@ async function saveResult(data, kind) {
   const values = {replay:activeReplay};
   if (previousReplay && kind === 'tournament') values.compare = previousReplay;
   history.replaceState(null, '', '/?' + new URLSearchParams(values));
-  if (kind === 'tournament') showResult({kind, machine:data.machine, result:data.result});
-  else showResult(await api('/api/replays/' + encodeURIComponent(activeReplay)));
+  showResult(await api('/api/replays/' + encodeURIComponent(activeReplay)));
   focus(shared);
 }
 function preview(machine) {

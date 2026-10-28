@@ -19,7 +19,7 @@
   "containers": [
     {
       "class_name": "Pylemma",
-      "image": "registry.cloudflare.com/24f97aae6afe0315dac069a5c08fe795/pylemma@sha256:23a3aeca12638d8ff5b99065d595bd6983f42ebf3a69293ea178a2e7ffd2784f",
+      "image": "registry.cloudflare.com/24f97aae6afe0315dac069a5c08fe795/pylemma@sha256:4a47c04a5acf4277a7b6fdc92cef32b0e74269c01bef49fc4d5363c0814bebad",
       "instance_type": "lite",
       "max_instances": 1
     }
@@ -44,7 +44,9 @@
     "enabled": true
   },
   "vars": {
-    "LOGFIRE_BASE_URL": "https://logfire-eu.pydantic.dev"
+    "LOGFIRE_BASE_URL": "https://logfire-eu.pydantic.dev",
+    "LOGFIRE_PROJECT_URL": "https://logfire-eu.pydantic.dev/nibzard/starter-project/",
+    "LOGFIRE_PUBLIC_TRACES": "{\"01a18279f80e04757e90f2b753321bc4\":\"https://logfire-eu.pydantic.dev/public-trace/44e57f30-c25a-47fe-b85f-5db1d0604010?spanId=4ed36f7dff63d8fe\"}"
   },
   "preview_urls": false
 }

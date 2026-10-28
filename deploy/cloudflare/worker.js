@@ -1,5 +1,6 @@
 import { Container } from '@cloudflare/containers';
 import { operate, validId } from './storage.mjs';
+import { inspectLink } from './trace-links.mjs';
 
 export class Pylemma extends Container {
   defaultPort = 8080;
@@ -12,6 +13,7 @@ export class Pylemma extends Container {
       OPENAI_API_KEY: env.OPENAI_API_KEY,
       LOGFIRE_TOKEN: env.LOGFIRE_TOKEN,
       LOGFIRE_BASE_URL: env.LOGFIRE_BASE_URL,
+      PYLEMMA_LOGFIRE_PROJECT_URL: env.LOGFIRE_PROJECT_URL,
       PYLEMMA_DAILY_GENERATIONS: '20',
       PYLEMMA_STORE_URL: 'https://pylemma.aor.fyi',
       PYLEMMA_STORE_TOKEN: env.STORE_TOKEN,
@@ -50,7 +52,12 @@ export class Pylemma extends Container {
     if (request.method === 'GET' && match) {
       if (!validId(match[2])) return Response.json({detail:'Invalid identifier.'}, {status:422});
       const kind = match[1] === 'machines' ? 'machine' : 'replay';
-      const result = await operate(this.ctx.storage, {operation:'get', kind, id:match[2]});
+      let result = await operate(this.ctx.storage, {operation:'get', kind, id:match[2]});
+      if (result && kind === 'replay') {
+        let reviewed = {};
+        try { reviewed = JSON.parse(this.env.LOGFIRE_PUBLIC_TRACES || '{}'); } catch {}
+        result = inspectLink(result, this.env.LOGFIRE_PROJECT_URL, reviewed || {});
+      }
       return Response.json(result ?? {detail:'Record not found.'}, {status:result ? 200 : 404});
     }
     if (request.method !== 'POST' || !['/api/machines','/api/challenges','/api/tournaments'].includes(path)) {
