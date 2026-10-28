@@ -60,14 +60,14 @@ export async function operate(storage, input, now = new Date()) {
     if (!Number.isInteger(offset) || offset < 0 || offset > 100000 ||
         !Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid page.');
     const entries = await storage.list({prefix:'public:'});
-    return publicPage([...entries.values()].filter(row=>row.kind === 'arena'),false,offset,limit);
+    return withStrategies(storage,publicPage([...entries.values()].filter(row=>row.kind === 'arena'),false,offset,limit));
   }
   if (input.operation === 'public_games') {
     const {ranked, offset=0, limit=20} = input;
     if (typeof ranked !== 'boolean' || !Number.isInteger(offset) || offset < 0 || offset > 100000 ||
         !Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid page.');
     const entries = await storage.list({prefix:'public:'});
-    return publicPage([...entries.values()], ranked, offset, limit);
+    return withStrategies(storage,publicPage([...entries.values()], ranked, offset, limit));
   }
   if (input.operation === 'status') {
     const generations = await storage.get('lifetime:generation') || 0;
@@ -142,4 +142,18 @@ export async function clearPreviousResults(storage) {
     await tx.put(marker,result);
     return result;
   });
+}
+
+
+/** Enrich old public summaries without rewriting results or exposing unlisted players. */
+async function withStrategies(storage,page) {
+  const entries=await Promise.all(page.entries.map(async entry=>({
+    ...entry,
+    players:await Promise.all(entry.players.map(async player=>{
+      if (typeof player.strategy === 'string' && player.strategy) return player;
+      const machine=await storage.get('machine:'+player.id);
+      return {...player,strategy:machine?.public_listing === true ? machine.strategy || '' : ''};
+    })),
+  })));
+  return {...page,entries};
 }

@@ -121,3 +121,23 @@ nav { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 .progress-panel [aria-current="step"] { color: var(--accent); font-weight: 700; }
 #progress-time { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .progress-panel progress { appearance: none; } }
+
+.board .strategy-cell { min-width: 180px; max-width: 340px; overflow-wrap: anywhere; }
+.board .strategy-cell p { margin: 0; }
+.board .strategy-cell details { margin-top: 8px; }
+.board .board-score { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.board .player-cell { white-space: nowrap; }
+@media (max-width: 640px) {
+  .arena-board, .arena-board tbody { display: block; min-width: 0; }
+  .arena-board caption { display: block; text-align: left; }
+  .arena-board thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .arena-board tr { display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; padding: 18px 0; border-bottom: 1px solid var(--border); }
+  .arena-board td { padding: 0; border: 0; }
+  .arena-board .player-cell { grid-column: 1; grid-row: 1; font-weight: 700; }
+  .arena-board .board-score { grid-column: 2; grid-row: 1; font-weight: 700; }
+  .arena-board .strategy-cell { grid-column: 1 / -1; grid-row: 2; min-width: 0; max-width: none; }
+  .arena-board .format-cell { grid-column: 1 / -1; grid-row: 3; }
+  .arena-board .replay-cell { grid-column: 1; grid-row: 4; }
+  .arena-board .challenge-cell { grid-column: 2; grid-row: 4; }
+}

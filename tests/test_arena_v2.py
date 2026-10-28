@@ -41,6 +41,7 @@ def test_fixed_suite_scores_and_round_counts() -> None:
             assert summary is not None
             assert summary["suite_version"] == "arena-v2"
             assert summary["rounds_per_match"] == 20
+            assert summary["players"][0]["strategy"] == "Rules"
             if blueprint.summary == "The Rebuilder":
                 match = next(
                     m for m in result["matches"] if m["opponent"] == "The Prober"

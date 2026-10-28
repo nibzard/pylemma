@@ -345,3 +345,14 @@ The suite version identifies opponent policies and round count.
 Public entries carry their suite version, and the browser derives scores per round.
 Existing public summaries without a suite version display as legacy arena entries.
 Result highlights select recorded recovery rounds without claiming a player's intent.
+
+
+## Public strategy descriptions
+
+Public player summaries include the submitted strategy.
+Older Worker summaries receive missing strategy text from the saved public player during reads.
+This enrichment does not rewrite replays or change publication consent.
+The recent results page omits version labels when every entry uses the current fixed suite.
+Mixed formats retain a visible distinction.
+Scores use points per round on the per-round zero-to-five scale, not a percentile or rating.
+Mobile rows stack the player, score, strategy, and actions without horizontal scrolling.

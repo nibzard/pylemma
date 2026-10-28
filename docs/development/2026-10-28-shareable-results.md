@@ -1,0 +1,61 @@
+# Explain results for new visitors
+
+## Objective
+
+Make public results and sharing text understandable without prior game knowledge.
+
+## Relevant specification sections
+
+Public discovery, arena-v2 comparisons, and section 16.1 apply.
+
+## Files and contracts changed
+
+Public player summaries include their submitted strategy.
+Existing summaries receive strategy text from their public saved player during reads.
+The recent results table shows the strategy and explains the score scale.
+Homogeneous current results omit internal version labels.
+Mixed formats retain visible labels.
+
+## Decisions and reasons
+
+Use the submitted rules rather than inventing a strategy title.
+Show a short excerpt with access to the full text.
+Explain the common opponent set, match length, and points per round.
+Describe individual scores in sharing text; do not claim an unmeasured comparison.
+
+## Simplicity review
+
+Extend the existing read model and rendering functions.
+No generation request, new database, or new service is needed.
+Read enrichment preserves existing results and visibility decisions.
+
+## Checks run and results
+
+- Four Python tests covering public records and arena-v2 passed.
+- All 26 Worker tests passed, including enrichment of existing public summaries.
+- All 17 browser tests passed, including sharing text, truncation, and decimal rounding.
+- Ruff lint and format checks passed; mypy passed for 42 source files.
+- JavaScript module syntax and git diff checks passed.
+- File fingerprints matched before and after checks.
+- Browser checks used the two current public entries as read-only fixtures.
+- Desktop columns show Player, Strategy, Score, Replay, and Challenge.
+- A mixed-format fixture retained Current arena and Earlier arena labels.
+- Long strategies offered their full text in an expandable control.
+- At a 390-pixel viewport, the page width remained 390 pixels and the result list fit its 354-pixel container.
+- Docker build and registry push passed.
+
+## Failures and verified corrections
+
+The first mobile layout clipped the score and wrapped the handle.
+Stacking the fields at narrow widths corrected both issues.
+Existing floating-point formatting displayed 517 / 200 as 2.58.
+Rounding the scaled integer score first correctly displays 2.59 without changing stored points.
+
+## Known limits
+
+Submitted strategy text can differ from generated behavior.
+A score is an average of game points, not a percentile or quality rating.
+
+## Next implementation step
+
+Verify existing public entries, browser presentation, and sharing text before deploying.

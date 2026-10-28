@@ -69,11 +69,21 @@ export function highlight(match, names) {
   return {round:1, text:`Both players cooperated in every round. Each earned ${rounds.length * 3} points.`};
 }
 
+export function shortStrategy(text,limit=100) {
+  const clean=(text || '').replace(/\s+/g,' ').trim();
+  return clean.length > limit ? clean.slice(0,limit-1)+'…' : clean;
+}
+
+export function averagePoints(total,rounds) {
+  return (Math.round(total * 100 / rounds) / 100).toFixed(2);
+}
+
 export function shareText(machine, result) {
-  const rule = machine.strategy.length > 80 ? machine.strategy.slice(0,77) + '…' : machine.strategy;
-  const format=result.suite_version === 'arena-v2' ?
-    `\n${(result.total / 200).toFixed(2)} points per round against the fixed Arena v2 opponents.` : '';
-  return `${machine.name}: “${rule}”\n${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'} in Prisoner’s Pylemma.${format}\nCan your strategy do better?`;
+  const rule = shortStrategy(machine.strategy,80);
+  if (result.suite_version === 'arena-v2') {
+    return `${machine.name}: “${rule}”\n${averagePoints(result.total,200)}/5 points per round. 20 rounds, 10 fixed opponents.\nTrust or betray? Can you do better?`;
+  }
+  return `${machine.name}: “${rule}”\n${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'} in Prisoner’s Pylemma.\nCan your strategy do better?`;
 }
 
 

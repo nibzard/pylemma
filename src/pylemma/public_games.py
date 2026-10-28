@@ -43,7 +43,10 @@ def entry(identifier: str, data: dict[str, Any]) -> dict[str, Any] | None:
     return {
         "replay_id": identifier,
         "kind": kind,
-        "players": [{"id": m["id"], "name": m["name"]} for m in machines],
+        "players": [
+            {"id": m["id"], "name": m["name"], "strategy": m.get("strategy", "")}
+            for m in machines
+        ],
         "scores": scores,
         "created_at": data.get("created_at"),
         "suite_version": suite,

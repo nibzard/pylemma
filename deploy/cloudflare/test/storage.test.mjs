@@ -176,3 +176,17 @@ test('result reset deletes only results and indexes and never repeats',async()=>
   assert.deepEqual(await clearPreviousResults(storage),first);
   assert.deepEqual(await storage.get('replay:new'),{saved:'after-reset'});
 });
+
+test('existing public summaries gain actual rules without rewriting results',async()=>{
+  const storage=new Storage();
+  await storage.put('public:old',{replay_id:'old',kind:'arena',suite_version:'arena-v2',
+    players:[{id:'p',name:'@same'}],scores:[425]});
+  await storage.put('machine:p',{id:'p',public_listing:true,strategy:'Betray first and last.'});
+  const before=await storage.get('public:old');
+  const page=await operate(storage,{operation:'arena_games'});
+  assert.equal(page.entries[0].players[0].strategy,'Betray first and last.');
+  assert.deepEqual(await storage.get('public:old'),before);
+  await storage.put('machine:p',{id:'p',public_listing:false,strategy:'UNLISTED'});
+  const hidden=await operate(storage,{operation:'arena_games'});
+  assert.equal(hidden.entries[0].players[0].strategy,'');
+});

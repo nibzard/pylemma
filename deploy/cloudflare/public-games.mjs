@@ -17,7 +17,7 @@ export function publicEntry(id, data) {
   if (machines.some(machine => machine.public_listing !== true) ||
       scores.some(score => !Number.isInteger(score) || score < 0 || score > (data.kind === 'arena' ? 50 * roundsPerMatch : 150))) return null;
   return {replay_id:id, kind:data.kind,
-    players:machines.map(machine => ({id:machine.id, name:machine.name})),
+    players:machines.map(machine => ({id:machine.id, name:machine.name, strategy:machine.strategy ?? ""})),
     scores, suite_version:result.suite_version ?? null, rounds_per_match:roundsPerMatch, created_at:data.created_at ?? null};
 }
 
