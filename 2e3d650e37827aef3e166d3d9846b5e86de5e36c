@@ -1,0 +1,1 @@
+The user limits this change to visual styling. Update only the stylesheet and development evidence. Preserve layout, content, and interactions. Desktop and mobile visual checks, contrast calculations, and a byte comparison of the live stylesheet pass. See docs/development/2026-10-28-paper-styling.md.
