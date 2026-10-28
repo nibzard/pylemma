@@ -1,0 +1,4 @@
+Public Logfire trace publication still requires full content review and
+signed-out access verification. Obtain a new explicit spending allowance
+before increasing the fixed generation limits. Cloudflare meters account
+usage independently of the application's generation reservations.
