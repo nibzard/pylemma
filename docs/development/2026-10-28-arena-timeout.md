@@ -58,4 +58,15 @@ A timing failure depends on scheduling and may not reproduce in an isolated run.
 
 ## Next implementation step
 
-Test execution under contention, apply the smallest bounded correction, and verify deployment.
+Monitor subsequent arena runs for execution timeouts.
+
+## Live verification
+
+Worker version `829d23b2-320c-4a38-9478-034d0999cc4f` uses image digest `90b722d895ec7e1f15b50b90d0ec6aac24383809563a5f703b12c15249f9144f`.
+The container information endpoint confirmed the new image before retrying the saved entrant.
+The retry returned HTTP 201 in 32.97 seconds, with ten matches, 100 rounds, and 297 points.
+Replay: `390e52e3-2ed2-461f-82f3-9402af76545d`.
+Request reference: `032691c3-935c-45aa-b202-87969148cc97`.
+Logfire confirmed 200 decision spans with the 0.5-second feed budget and no error types.
+The arena span recorded the entrant identifier and `completed=true` under the deployed version.
+No model request was made. The retry used the existing entrant and the current opponent selection.
