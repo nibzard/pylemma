@@ -1,0 +1,1 @@
+Intentionally disconnected a live build at three seconds and recovered the saved player. Same-reference retry returned it in 0.125s; changed input returned 409. Logfire shows one generation. The new twenty-round arena completed in 5.872s; legacy replay counts and score remained unchanged.
