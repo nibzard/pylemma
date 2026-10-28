@@ -29,14 +29,23 @@ class Machine(Contract):
     strategy: Annotated[str, Field(min_length=1, max_length=1000)]
     blueprint: Blueprint
     source_hash: str
+    public_listing: bool = False
 
     @classmethod
-    def create(cls, name: str, strategy: str, blueprint: Blueprint) -> "Machine":
+    def create(
+        cls,
+        name: str,
+        strategy: str,
+        blueprint: Blueprint,
+        *,
+        public_listing: bool = False,
+    ) -> "Machine":
         return cls(
             id=uuid4(),
             name=name,
             strategy=strategy,
             blueprint=blueprint,
+            public_listing=public_listing,
             source_hash=sha256(blueprint.code.encode()).hexdigest(),
         )
 

@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 import httpx
 
 from pylemma.machines import Machine
+from pylemma.public_games import timestamp
 
 
 class RemoteMachineStore:
@@ -56,9 +57,22 @@ class RemoteMachineStore:
 
     def replay(self, data: dict[str, Any]) -> UUID:
         identifier = uuid4()
-        self.call("put", kind="replay", id=str(identifier), data=data)
+        self.call(
+            "put",
+            kind="replay",
+            id=str(identifier),
+            data={"created_at": timestamp(), **data},
+        )
         return identifier
 
     def read(self, identifier: UUID) -> dict[str, Any]:
         result: dict[str, Any] = self.call("get", kind="replay", id=str(identifier))
+        return result
+
+    def public_games(
+        self, *, ranked: bool, offset: int = 0, limit: int = 20
+    ) -> dict[str, Any]:
+        result: dict[str, Any] = self.call(
+            "public_games", ranked=ranked, offset=offset, limit=limit
+        )
         return result

@@ -16,6 +16,10 @@ def test_remote_contracts_and_authentication() -> None:
     def respond(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == "Bearer synthetic-token"
         body = json.loads(request.content)
+        if body["operation"] == "public_games":
+            return httpx.Response(
+                200, json={"entries": [], "total": 0, "next_offset": None}
+            )
         if body["operation"] == "reserve":
             return httpx.Response(200, json=True)
         key = body["kind"] + ":" + body["id"]
@@ -32,6 +36,7 @@ def test_remote_contracts_and_authentication() -> None:
         transport=httpx.MockTransport(respond),
     )
     try:
+        assert store.public_games(ranked=True)["total"] == 0
         assert store.reserve(20)
         assert store.reserve_challenge(400)
         machine = Machine.create("Trust", "Always cooperate", presets()[0])

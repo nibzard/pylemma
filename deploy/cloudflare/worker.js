@@ -34,6 +34,18 @@ export class Pylemma extends Container {
         return Response.json({detail:'Storage operation failed.'}, {status:400});
       }
     }
+    if (request.method === 'GET' && ['/api/leaderboard','/api/games'].includes(path)) {
+      const query = new URL(request.url).searchParams;
+      const offset = Number(query.get('offset') ?? 0);
+      const limit = Number(query.get('limit') ?? 20);
+      try {
+        return Response.json(await operate(this.ctx.storage, {
+          operation:'public_games', ranked:path === '/api/leaderboard', offset, limit,
+        }));
+      } catch {
+        return Response.json({detail:'Use a valid page with between 1 and 50 games.'}, {status:422});
+      }
+    }
     const match = path.match(/^\/api\/(machines|replays)\/([^/]+)$/);
     if (request.method === 'GET' && match) {
       if (!validId(match[2])) return Response.json({detail:'Invalid identifier.'}, {status:422});
@@ -65,7 +77,8 @@ export class Pylemma extends Container {
     if (kind === 'generation') {
       if (typeof input.name !== 'string' || !input.name.trim() || input.name.length > 60 ||
           typeof input.strategy !== 'string' || !input.strategy.trim() || input.strategy.length > 1000 ||
-          input.public_acknowledged !== true || (input.preview !== undefined && typeof input.preview !== 'boolean') || Object.keys(input).some(k=>!['name','strategy','public_acknowledged','preview'].includes(k))) {
+          input.public_acknowledged !== true || (input.preview !== undefined && typeof input.preview !== 'boolean') ||
+          (input.public_listing !== undefined && typeof input.public_listing !== 'boolean') || Object.keys(input).some(k=>!['name','strategy','public_acknowledged','preview','public_listing'].includes(k))) {
         return Response.json({detail:'Supply a name, strategy, and public record acknowledgement.'}, {status:422});
       }
     } else if (path === '/api/tournaments') {

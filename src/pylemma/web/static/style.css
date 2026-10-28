@@ -104,3 +104,11 @@ button:hover:not(:disabled):not(.primary) { background: var(--tint); }
 input::placeholder, textarea::placeholder { color: #6c6d66; opacity: 1; }
 .reference meter::-webkit-meter-suboptimum-value { background: var(--accent); }
 .reference meter::-webkit-meter-even-less-good-value { background: var(--accent); }
+nav { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.board-scroll { overflow-x: auto; border-top: 1px solid var(--border); margin: 24px 0; }
+.board { min-width: 520px; }
+.board td:nth-child(2) { max-width: 260px; overflow-wrap: anywhere; }
+@media (max-width: 440px) {
+  header { flex-wrap: wrap; gap: 12px; }
+  nav { width: 100%; justify-content: space-between; }
+}

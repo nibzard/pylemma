@@ -1327,3 +1327,30 @@ Show a public Logfire link and its purpose when a reviewed reference exists.
 Do not show operator publication procedures as visitor instructions.
 Verify the demonstration, confirmation, revision, invitation, result, and mobile flows.
 Automated and browser checks do not replace comprehension testing with new visitors.
+
+## Public leaderboard contract
+
+The current phase adds public rankings and public game history.
+This section supersedes the original exclusion of a global score table.
+A new immutable machine field, `public_listing`, defaults to false.
+The creation request accepts the same optional field. The browser requires a separate listing choice, unchecked by default.
+The existing public-record acknowledgement remains required for creation.
+Missing listing fields preserve existing unlisted behavior. Do not publish old records through the public directory.
+A completed challenge enters public history only when both players permit listing.
+A stored preview does not enter either list until a game completes.
+
+`GET /api/leaderboard` ranks every completed public trust-v1 tournament under pd-v1 by total points, highest first.
+Keep repeated games by the same player as separate entries. Equal scores share a rank; subsequent ranks have a gap.
+Use replay identifiers to order equal scores consistently.
+`GET /api/games` lists the same public tournaments and completed public challenges by completion time, newest first.
+Challenge scores do not affect tournament ranks because their opponents can differ.
+Both endpoints accept `offset` and `limit`. Offset ranges from zero to 100,000. Limit ranges from one to fifty.
+The default page contains twenty entries. Responses include entries, total, and the next offset when another page exists.
+Entries contain replay identifiers, game kind, player identifiers and names, scores, and completion time.
+Each listed game links to its existing replay. Tournament rows also link to a challenge invitation.
+Names do not establish a verified human identity.
+
+Save the compact public summary atomically with each qualifying replay in Cloudflare durable storage.
+Local SQLite derives the equivalent read model from stored replays.
+Public reads do not call a model, execute a strategy, or start the container.
+Retain the current palette, borders, and existing game flow while adding the leaderboard navigation and table.

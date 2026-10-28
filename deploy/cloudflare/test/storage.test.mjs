@@ -5,6 +5,7 @@ import { operate, MAX_GENERATIONS, validId } from '../storage.mjs';
 class Storage {
   values = new Map();
   pending = Promise.resolve();
+  async list({prefix}) { return new Map([...this.values].filter(([key])=>key.startsWith(prefix))); }
   async get(key) { return structuredClone(this.values.get(key)); }
   async put(key, value) {
     if (typeof key === 'object') {
@@ -38,4 +39,33 @@ test('records survive a new request handler and remain immutable', async()=>{
   await assert.rejects(operate(storage,{operation:'put',kind:'machine',id,data:{name:'Changed'}}));
   assert.equal(await operate(storage,{operation:'get',kind:'replay',id}),null);
   assert.equal(validId('../private'),false);
+});
+
+test('indexes only consented completed games and preserves shared ranks across pages',async()=>{
+  const storage = new Storage();
+  const machine = (id,listed) => ({id,name:'Player '+id,public_listing:listed});
+  const replay = (score,listed=true) => ({kind:'tournament',machine:machine('a',listed),
+    created_at:'2026-10-28T12:00:00+00:00',
+    result:{rules_version:'pd-v1',suite_version:'trust-v1',total:score,
+      matches:Array.from({length:3},()=>({rounds:Array(10).fill({})}))}});
+  const put = (n,data) => operate(storage,{operation:'put',kind:'replay',
+    id:`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`,data});
+  await put(1,replay(81)); await put(2,replay(81)); await put(3,replay(78));
+  await put(4,replay(150,false));
+  const partial = replay(100); partial.result.matches[0].rounds=[]; await put(5,partial);
+  const unknown = replay(100); unknown.result.suite_version='future'; await put(6,unknown);
+  const challenge={kind:'challenge',machines:[machine('a',true),machine('b',false)],
+    result:{rounds:Array(10).fill({}),totals:[50,0]}};
+  await put(7,challenge);
+  const a=await operate(storage,{operation:'public_games',ranked:true,limit:2});
+  const b=await operate(storage,{operation:'public_games',ranked:true,offset:2,limit:2});
+  assert.equal(a.total,3); assert.deepEqual(a.entries.map(e=>e.rank),[1,1]);
+  assert.equal(b.entries[0].rank,3); assert.equal(b.next_offset,null);
+  const both=structuredClone(challenge); both.machines[1].public_listing=true;
+  both.created_at='2026-10-29T00:00:00+00:00'; await put(8,both);
+  const history=await operate(storage,{operation:'public_games',ranked:false});
+  assert.equal(history.total,4); assert.equal(history.entries[0].kind,'challenge');
+  assert.equal((await operate(storage,{operation:'public_games',ranked:true})).total,3);
+  await assert.rejects(operate(storage,{operation:'public_games',ranked:true,limit:100}));
+  assert.equal([...storage.values.keys()].filter(k=>k.startsWith('public:')).length,4);
 });

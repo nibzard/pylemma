@@ -73,3 +73,13 @@ Confirmation calls `POST /api/tournaments` with the stored `machine_id`.
 This operation shares the challenge execution allowance and makes no model request.
 Existing creation requests without preview retain their previous behavior.
 Verify old replay links after an interface deployment. They should show the result before the creation form.
+
+## Public game discovery
+
+The Worker serves `GET /api/leaderboard` and `GET /api/games` from durable summaries.
+These reads do not start the container. Each response contains at most fifty entries.
+A completed replay and its eligible public summary commit in one transaction.
+The immutable `public_listing` field controls discovery. Missing fields mean false.
+Do not backfill old unlisted records into the public index.
+Public summaries contain names, scores, and replay links. Full strategies and generated code remain available through the replay.
+Verify an unlisted replay remains readable but absent from both public endpoints after deployments.

@@ -9,7 +9,7 @@ from typing import Annotated, Any, Protocol
 from uuid import UUID
 
 import logfire
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -33,6 +33,7 @@ class Create(BaseModel):
     strategy: Annotated[str, Field(min_length=1, max_length=1000)]
     public_acknowledged: bool
     preview: bool = False
+    public_listing: bool = False
 
 
 class TournamentRequest(BaseModel):
@@ -120,7 +121,12 @@ def create_app(
                 try:
                     blueprint = await builder.generate(body.strategy)
                     await asyncio.to_thread(sandbox.validate, blueprint)
-                    result = Machine.create(body.name, body.strategy, blueprint)
+                    result = Machine.create(
+                        body.name,
+                        body.strategy,
+                        blueprint,
+                        public_listing=body.public_listing,
+                    )
                     if body.preview:
                         store.put(result)
                         operation.set(machine_id=str(result.id))
@@ -203,6 +209,20 @@ def create_app(
                         "A machine failed during this challenge. "
                         "No completed result was recorded.",
                     ) from None
+
+    @app.get("/api/leaderboard")
+    def leaderboard(
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    ) -> dict[str, Any]:
+        return store.public_games(ranked=True, offset=offset, limit=limit)
+
+    @app.get("/api/games")
+    def games(
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    ) -> dict[str, Any]:
+        return store.public_games(ranked=False, offset=offset, limit=limit)
 
     @app.get("/api/replays/{identifier}")
     def replay(identifier: UUID) -> dict[str, Any]:

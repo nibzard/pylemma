@@ -248,3 +248,13 @@ It shares the execution quota with challenges and makes no provider request.
 It never changes authoritative scores or requests another explanation from a model.
 The browser demonstration uses three fixed single-round examples and makes no external request.
 Shared pages render their result or invitation first. Revision links retain an earlier replay for comparison.
+
+## Public discovery
+
+`Machine.public_listing` records immutable discovery consent. Its default is false for existing records and older clients.
+`public_games.py` defines the public summary and ranking contract for local storage.
+The Cloudflare equivalent lives in `deploy/cloudflare/public-games.mjs`.
+The Durable Object saves summaries in `public:` keys within the replay transaction.
+Public leaderboard and game-history reads access those compact entries without starting the container.
+Tournaments share one score comparison. Challenges appear only in chronological history.
+A preview has no public game entry. Both challenge participants must permit discovery before their game is listed.

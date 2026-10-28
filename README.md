@@ -251,3 +251,15 @@ Run the factual explanation checks offline:
 ```sh
 node --test tests/web/story.test.mjs
 ```
+
+## Global leaderboard
+
+Open [the leaderboard](https://pylemma.aor.fyi/?leaderboard=1) to compare completed public tournaments.
+Open **All public games** for tournaments and challenges in completion order.
+Each entry links to its replay. Tournament entries also provide challenge links.
+
+Select **List this player and its completed games publicly** when creating a player to include its games.
+The choice is optional and unchecked by default. Existing unlisted games remain unlisted.
+Challenges appear publicly only when both players permit listing.
+Repeated tournaments count as separate games. Equal scores share a rank.
+These rankings use the fixed opponent suite and do not verify a player's human identity.

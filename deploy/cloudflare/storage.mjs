@@ -1,3 +1,5 @@
+import { publicEntry, publicPage } from './public-games.mjs';
+
 /** Persist records and reserve allowances before external work starts. */
 export const BUDGET_MICRO_USD = 4_000_000;
 export const RESERVATION_MICRO_USD = 50_000;
@@ -6,6 +8,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validId = id => typeof id === 'string' && UUID.test(id);
 
 export async function operate(storage, input, now = new Date()) {
+  if (input.operation === 'public_games') {
+    const {ranked, offset=0, limit=20} = input;
+    if (typeof ranked !== 'boolean' || !Number.isInteger(offset) || offset < 0 || offset > 100000 ||
+        !Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid page.');
+    const entries = await storage.list({prefix:'public:'});
+    return publicPage([...entries.values()], ranked, offset, limit);
+  }
   if (input.operation === 'status') {
     const generations = await storage.get('lifetime:generation') || 0;
     const challenges = await storage.get('lifetime:challenge') || 0;
@@ -36,6 +45,10 @@ export async function operate(storage, input, now = new Date()) {
     return storage.transaction(async tx => {
       if (await tx.get(key)) throw new Error('Record already exists.');
       await tx.put(key, input.data);
+      if (input.kind === 'replay') {
+        const summary = publicEntry(input.id, input.data);
+        if (summary) await tx.put('public:'+input.id, summary);
+      }
       return true;
     });
   }

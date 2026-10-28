@@ -64,6 +64,7 @@ function showBuilder(machine) {
   if (machine) {
     $('#name').value = machine.name;
     $('#strategy').value = machine.strategy;
+    $('#listed').checked = machine.public_listing === true;
     previousReplay = activeReplay;
   }
   focus($('#strategy'));
@@ -199,6 +200,10 @@ function showResult(data) {
       shared.append(panel);
     });
   }
+  const listed = data.kind === 'tournament' ? data.machine.public_listing === true :
+    data.machines.every(machine => machine.public_listing === true);
+  shared.append(el('p', listed ? 'This completed game is listed publicly.' : 'This game is unlisted. It does not appear in public game lists.', 'small'));
+  shared.append(link('See the global leaderboard', {leaderboard:'1'}));
   traceDetails(data, shared);
   shared.append(el('p', 'These points describe this game. They do not measure intelligence or real-world trustworthiness.', 'small'));
   message('');
@@ -255,6 +260,71 @@ function showLesson() {
   focus($('#lesson-title'));
 }
 
+async function leaderboard() {
+  sharedLayout();
+  const all = params.get('view') === 'all';
+  const rawOffset = Number(params.get('offset') || 0);
+  const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+  shared.replaceChildren(el('p', 'The public games', 'eyebrow'),
+    el('h1', all ? 'Every public game.' : 'Whose rules earn the most?'));
+  const actions = el('div', undefined, 'actions');
+  actions.append(link('Tournament leaderboard', {leaderboard:'1'}),
+    link('All public games', {leaderboard:'1',view:'all'}),
+    button('Create your player', () => showBuilder(), 'primary'));
+  actions.querySelectorAll('a')[all ? 1 : 0].setAttribute('aria-current', 'page');
+  shared.append(actions);
+  shared.append(el('p', all ?
+    'Completed public tournaments and challenges, newest first. Challenge scores depend on the opponent.' :
+    'Every completed public tournament counts. Each player faces the same three opponents for thirty rounds. Equal scores share a rank.'));
+  shared.append(el('p', 'Only players that permit public listing appear here. Existing unlisted games stay unlisted.', 'small'));
+  message('Loading public games…');
+  const data = await api(`${all ? '/api/games' : '/api/leaderboard'}?offset=${offset}&limit=20`);
+  message('');
+  if (!data.entries.length) {
+    shared.append(el('p', data.total ? 'There are no games on this page.' :
+      'No completed public games yet. Create a player with public listing enabled to add the first one.', 'panel'));
+  } else {
+    shared.append(el('p', `${data.total} completed public ${data.total === 1 ? 'game' : 'games'}.`, 'small'));
+    const box = el('div', undefined, 'board-scroll');
+    box.tabIndex = 0;
+    box.setAttribute('role', 'region');
+    box.setAttribute('aria-label', 'Scrollable table of public games');
+    const table = el('table', undefined, 'board');
+    table.append(el('caption', all ? 'All completed public games' : 'Tournament scores · trust-v1 · pd-v1'));
+    const head = el('tr');
+    for (const title of all ? ['Game', 'Players', 'Points', 'Played', 'Replay'] : ['Rank', 'Player', 'Points', 'Replay', 'Challenge']) {
+      const th = el('th', title); th.scope = 'col'; head.append(th);
+    }
+    const thead = el('thead'); thead.append(head); table.append(thead);
+    const body = el('tbody');
+    for (const entry of data.entries) {
+      const row = el('tr');
+      row.append(el('td', all ? (entry.kind === 'tournament' ? 'Tournament' : 'Challenge') : String(entry.rank)),
+        el('td', entry.players.map(player => player.name).join(' vs ')),
+        el('td', entry.scores.join(' / ')));
+      if (all) {
+        const played = el('td');
+        const stamp = entry.created_at ? new Date(entry.created_at) : null;
+        const time = el('time', stamp ? stamp.toLocaleString(undefined, {dateStyle:'medium',timeStyle:'short'}) : 'Time unavailable');
+        if (entry.created_at) time.dateTime = entry.created_at;
+        played.append(time); row.append(played);
+      }
+      const replay = el('td'); replay.append(link('Watch game', {replay:entry.replay_id})); row.append(replay);
+      if (!all) {
+        const challenge = el('td'); challenge.append(link('Challenge', {challenge:entry.players[0].id})); row.append(challenge);
+      }
+      body.append(row);
+    }
+    table.append(body); box.append(table); shared.append(box);
+  }
+  const pages = el('div', undefined, 'actions');
+  const values = {leaderboard:'1'};
+  if (all) values.view='all';
+  if (offset) pages.append(link('Previous page', {...values,offset:String(Math.max(0,offset-20))}));
+  if (data.next_offset !== null) pages.append(link('Next page', {...values,offset:String(data.next_offset)}));
+  shared.append(pages);
+}
+
 const scenes = [
   {choices:['cooperate','cooperate'], points:[3,3], title:'You both cooperate.',
     text:'You each earn 3 points. Working together pays both players.', next:'What if you betray?'},
@@ -283,7 +353,7 @@ $('#builder').onsubmit = event => {
   void run(submit, async () => {
     const data = await api('/api/machines', {
       name:$('#name').value, strategy:$('#strategy').value,
-      public_acknowledged:$('#ack').checked, preview:true,
+      public_acknowledged:$('#ack').checked, public_listing:$('#listed').checked, preview:true,
     });
     const values = {player:data.machine.id};
     if (target) values.challenge = target.id;
@@ -295,12 +365,14 @@ $('#builder').onsubmit = event => {
 showDemo();
 (async () => {
   try {
-    if (params.has('replay') || targetId || params.has('player')) {
+    if (params.has('leaderboard') || params.has('replay') || targetId || params.has('player')) {
       sharedLayout();
       message('Opening the shared player or result…');
     }
     if (targetId) target = await api('/api/machines/' + encodeURIComponent(targetId));
-    if (params.has('replay')) {
+    if (params.has('leaderboard')) {
+      await leaderboard();
+    } else if (params.has('replay')) {
       showResult(await api('/api/replays/' + encodeURIComponent(params.get('replay'))));
     } else if (params.has('player')) {
       preview(await api('/api/machines/' + encodeURIComponent(params.get('player'))));

@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from pylemma.machines import Machine
+from pylemma.public_games import entry, page, timestamp
 from pylemma.records.links import validate_public_url
 
 
@@ -72,6 +73,7 @@ class MachineStore:
 
     def replay(self, data: dict[str, Any]) -> UUID:
         identifier = uuid4()
+        data = {"created_at": timestamp(), **data}
         with self.connect() as db:
             db.execute(
                 "INSERT INTO machine_replays VALUES (?, ?)",
@@ -106,3 +108,16 @@ class MachineStore:
                 "UPDATE machine_replays SET data=? WHERE id=?",
                 (json.dumps(data), str(identifier)),
             )
+
+    def public_games(
+        self, *, ranked: bool, offset: int = 0, limit: int = 20
+    ) -> dict[str, Any]:
+        """Read public summaries without running a game or requesting a model."""
+        with self.connect() as db:
+            records = db.execute("SELECT id, data FROM machine_replays").fetchall()
+        entries = []
+        for identifier, raw in records:
+            summary = entry(identifier, json.loads(raw))
+            if summary is not None:
+                entries.append(summary)
+        return page(entries, ranked, offset, limit)

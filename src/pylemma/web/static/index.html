@@ -11,7 +11,7 @@
   <main id="content">
     <header>
       <a class="brand" href="/">PRISONER'S PYLEMMA<span>A game about trust</span></a>
-      <button type="button" class="quiet" id="help">How to play</button>
+      <nav aria-label="Main navigation"><a href="/?leaderboard=1">Leaderboard</a><button type="button" class="quiet" id="help">How to play</button></nav>
     </header>
 
     <section id="intro" class="intro">
@@ -72,6 +72,7 @@
         <label for="name">Player name <span class="small">You can change this.</span></label>
         <input id="name" maxlength="60" required value="The second chance" autocomplete="off">
         <label class="notice"><input id="ack" type="checkbox" required><span>Anyone with a link can see my player's name, rules, generated code, and results. I will not enter private information.</span></label>
+        <label class="notice"><input id="listed" type="checkbox"><span>List this player and its completed games publicly on the leaderboard. Leave this unchecked to keep them unlisted.</span></label>
         <button class="primary" type="submit">Check my player's rules <span aria-hidden="true">→</span></button>
         <p class="small">AI turns your description into a player. You can check its rules before it plays.</p>
       </form>
