@@ -26,7 +26,8 @@ export function findings(match, names) {
     const response = rounds.find(r => r.round > opponentFirst.round && r.choices[0] === 'betray');
     if (response) {
       const count = rounds.filter(r => r.round < response.round && r.choices[1] === 'betray').length;
-      result.push(`${names[0]} first betrayed in round ${response.round}, after ${count} earlier ${count === 1 ? 'betrayal' : 'betrayals'} by ${names[1]}.`);
+      const earlier = rounds.some(r => r.round < response.round && r.choices[0] === 'betray');
+      result.push(`${names[0]} ${earlier ? 'betrayed again' : 'first betrayed'} in round ${response.round}, after ${count} earlier ${count === 1 ? 'betrayal' : 'betrayals'} by ${names[1]}.`);
     } else result.push(`${names[0]} kept cooperating after ${names[1]}'s first betrayal.`);
   }
   let streak = 0;

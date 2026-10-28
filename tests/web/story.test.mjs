@@ -76,3 +76,14 @@ test('highlights a recovery across matches and uses recorded round counts',async
   assert.match(selected.text,/returned to cooperation/);
   assert.match(findings(peaceful,['A','B'])[0],/60 points/);
 });
+
+test('an opening betrayal is not mislabeled as a first betrayal later',()=>{
+  const data=match([
+    ['betray','cooperate'],['cooperate','betray'],['betray','cooperate'],
+    ['cooperate','betray'],['betray','cooperate'],
+  ]);
+  const facts=findings(data,['@nibzard','The Mirror']);
+  assert.equal(facts[0],'@nibzard betrayed first, in round 1.');
+  assert.equal(facts[1],'@nibzard betrayed again in round 3, after 1 earlier betrayal by The Mirror.');
+  assert.ok(!facts.some(fact=>fact.includes('first betrayed in round 3')));
+});
