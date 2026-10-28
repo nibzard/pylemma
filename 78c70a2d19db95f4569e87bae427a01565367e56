@@ -1,0 +1,1 @@
+Accepted: Rank consented completed tournaments and index public game history atomically with replay storage. Preserve older unlisted records. See docs/decisions/007-public-game-discovery.md.
