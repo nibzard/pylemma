@@ -1,0 +1,1 @@
+The operator requested 100 daily generations after the shared 20-attempt limit was exhausted. Lower the conservative reservation to USD 0.01 so the existing USD 4 budget supports 400 lifetime attempts. Retain existing counters and challenge caps. Worker tests: 19 passed; Python boundary tests: 20 passed.
