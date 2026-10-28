@@ -1,0 +1,18 @@
+The user requests a global leaderboard of played games. Rank each
+completed public tournament against the same fixed suite. List public
+challenges separately in chronological history because opponents vary.
+
+Existing records promised unlisted links. Preserve that behavior with a
+false-by-default immutable public_listing field. New visitors explicitly
+select public listing. Both challenge participants must permit listing.
+The public index and qualifying replay commit in one Durable Object
+transaction. Public reads avoid model requests and container startup.
+
+All 217 Python tests and six JavaScript tests pass. Local browser checks
+cover two pages and listing consent. Live enrollment verifies an 81-point
+public tournament while an old unlisted replay remains accessible and
+excluded. Another public game completed during verification, so live
+checks use replay identifiers instead of fixed totals.
+
+Decision: docs/decisions/007-public-game-discovery.md
+Evidence: docs/development/2026-10-28-leaderboard.md
