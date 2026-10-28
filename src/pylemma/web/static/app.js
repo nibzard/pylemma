@@ -1,3 +1,4 @@
+import {normalizeHandle} from './handle.mjs';
 import { STAGES, requestStage, requestError, failureReport } from './progress.mjs';
 import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl } from './story.mjs';
 
@@ -456,10 +457,14 @@ $('#start').onclick = () => showBuilder();
 for (const example of document.querySelectorAll('[data-example]')) {
   example.onclick = () => { $('#strategy').value = example.dataset.example; };
 }
+$('#name').addEventListener('blur', () => {
+  $('#name').value = normalizeHandle($('#name').value);
+});
 $('#builder').onsubmit = event => {
   event.preventDefault();
   const submit = event.submitter || event.target.querySelector('[type=submit]');
   const reviewFirst = submit.dataset.preview === 'true';
+  $('#name').value = normalizeHandle($('#name').value);
   void run(submit, async () => {
     const data = await api('/api/machines', {
       name:$('#name').value, strategy:$('#strategy').value,
