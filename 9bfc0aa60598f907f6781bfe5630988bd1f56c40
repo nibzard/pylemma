@@ -1,0 +1,1 @@
+Worker version 8ed3c620-492c-4826-baeb-a5e3f7e68461 is live. An empty generation request reached validation (422) instead of the exhausted quota response (429), without consuming quota or calling a model.
