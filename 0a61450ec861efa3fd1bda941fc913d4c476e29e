@@ -1,0 +1,1 @@
+The new image completed a cold-start challenge in 75.93 seconds. All 37 Logfire spans shared the browser request reference and deployment version. Worker tests (16) and browser tests (8) pass. The SDK port polling budget is not a strict wall-clock deadline; cold startup remains slow on lite.
