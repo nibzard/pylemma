@@ -1,0 +1,17 @@
+The user authorizes Cloudflare deployment at pylemma.aor.fyi with an
+allowance of USD 5 or less. The existing account supports containers.
+
+Machine records and spending reservations live in a SQLite-backed
+Durable Object because container disks are temporary. The Worker serves
+assets and stored reads directly. Generation reserves USD 0.05 before
+external execution, with a USD 4 lifetime allowance and no refunds.
+
+Idle destruction corrects a verified graceful-stop proxy failure.
+Completed traces flush before responses; exporter failure preserves the
+result. Live generation, challenge replays, browser rendering, and
+remote Logfire delivery are verified. All 213 Python tests and two
+Worker storage tests pass.
+
+Decision: docs/decisions/005-cloudflare-container-storage.md
+Evidence: docs/development/2026-10-28-cloudflare.md
+Operations: docs/runbooks/cloudflare.md
