@@ -58,4 +58,23 @@ A cold container still starts on demand under the existing thirty-second idle po
 
 ## Next implementation step
 
-Identify reusable preparation, validate both entry actions, and deploy.
+Address cold-start latency separately if the operator chooses a longer idle policy or a different instance size.
+
+## Live verification
+
+Worker version `022fa437-cc46-4eda-a724-e3f74de61519` serves image `5ead653a1dde6ddf172f55f4ed6fc0a6f73cd6ae3d4863c392a0db1a5f6cb354`.
+The container information endpoint confirmed that image before the measurement.
+The live browser showed one unchecked checkbox with explicit public-entry consent and the optional review button.
+
+One unlisted preview generation returned HTTP 201 in 102.157421 seconds.
+Reference: `8b730ef6-644a-45ba-acc5-751be28a35c4`.
+Logfire confirmed the deployed version and successful completion without errors.
+Local preparation before HTTP dispatch was 0.712305 seconds, compared with 13.054270 seconds in the previous hosted probe.
+The generation span took 6.405297 seconds. The application request span took 8.373155 seconds.
+Approximately 93.78 seconds fell outside the application request span, including startup, proxying, and transport.
+These measurements do not establish how much of that external time was caused by the moved initialization.
+The request preparation improvement does not establish an overall cold-start improvement.
+
+Usage was 240 input tokens and 196 output tokens, with zero reasoning or cache tokens.
+Estimated provider cost was USD 0.000122 within the existing USD 0.01 reservation.
+No additional model calls were made for this task.
