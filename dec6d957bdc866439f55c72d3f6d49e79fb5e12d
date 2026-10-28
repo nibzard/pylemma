@@ -1,0 +1,1 @@
+Experiment only; production remains at ten rounds. Three candidates faced ten fixed opponents with three repetitions at each length. With local tracing, medians rose from 0.4–0.5s to 0.9–1.0s per arena. Twenty rounds revealed recovery at round 11. No hosted writes or model requests.
