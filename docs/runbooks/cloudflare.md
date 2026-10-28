@@ -198,3 +198,8 @@ Container error categories distinguish `startup_exit`, `port_deadline`, and `oth
 
 The port deadline is an SDK polling budget. Connection attempts can extend the elapsed wait.
 A verified cold-start challenge took about seventy-six seconds on the lite instance.
+
+Sandbox decisions have a 0.5-second feed budget and a two-second host request deadline.
+The previous 0.05-second budget caused an intermittent timeout for a bounded history-based policy on the lite instance.
+An execution timeout does not establish an infinite loop. Compare the source and observation before assigning the cause.
+Arena spans include the entrant identifier from the start, including failed entries.

@@ -116,7 +116,13 @@ def test_entry_retry_is_saved_and_unlisted_stays_private(tmp_path: Path) -> None
 
 
 def test_failed_arena_does_not_save_a_completed_entry(tmp_path: Path) -> None:
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+        InMemorySpanExporter,
+    )
+
     from pylemma.machines import Blueprint
+    from pylemma.telemetry import configure
 
     store = MachineStore(tmp_path / "failed-arena.sqlite3")
     broken = Machine.create(
@@ -133,7 +139,10 @@ def decide(observation):
         ),
     )
     store.put(broken)
-    telemetry = logfire.configure(send_to_logfire=False, console=False, local=True)
+    exporter = InMemorySpanExporter()
+    telemetry = configure(
+        send_to_logfire=False, processors=[SimpleSpanProcessor(exporter)]
+    )
     with TestClient(create_app(store, FakeBuilder(), telemetry, 1)) as client:
         response = client.post("/api/arena", json={"machine_id": str(broken.id)})
         assert response.status_code == 422
@@ -142,6 +151,11 @@ def decide(observation):
         with store.connect() as db:
             assert db.execute("SELECT count(*) FROM machine_replays").fetchone()[0] == 0
             assert db.execute("SELECT count(*) FROM challenge_slots").fetchone()[0] == 1
+
+    root = next(s for s in exporter.get_finished_spans() if s.name == "machine.arena")
+    assert root.attributes is not None
+    assert root.attributes["machine_id"] == str(broken.id)
+    assert root.attributes["stage"] == "execution"
 
 
 def test_arena_trace_records_round_references_and_funnel(tmp_path: Path) -> None:

@@ -303,7 +303,10 @@ def create_app(
                     "The daily game allowance is exhausted.",
                     headers={"X-Game-Outcome": "daily_quota"},
                 )
-            with match_context(telemetry), span("machine.arena") as operation:
+            with (
+                match_context(telemetry),
+                span("machine.arena", machine_id=str(player.id)) as operation,
+            ):
                 try:
                     operation.set(stage="select_opponents")
                     opponents = store.arena_opponents(player.id)

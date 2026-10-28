@@ -40,6 +40,7 @@ Observations contain the round, ten scheduled rounds, and completed choices from
 Both observations exist before either current choice is computed.
 Host scoring uses the existing pd-v1 matrix. Generated code cannot change scores.
 Memory, execution time, recursion, and host request deadlines bound execution.
+Each decision permits 0.5 seconds of sandbox execution within a two-second host request deadline.
 Failures never produce a fabricated choice or completed replay.
 The fixed trust-v1 tournament plays Optimist, Grudge Holder, and Opportunist for ten rounds each.
 Its score adds the machine's points across all three matches. Show combined points and individual match records.

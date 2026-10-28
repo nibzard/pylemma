@@ -72,7 +72,8 @@ class Sandbox:
         ) as operation:
             limits: ResourceLimits = {
                 "max_memory": 8_000_000,
-                "max_feed_duration_secs": 0.05,
+                # Hosted CPU throttling can delay a short decision past 50 ms.
+                "max_feed_duration_secs": 0.5,
                 "max_recursion_depth": 80,
             }
             operation.set(stage="checkout", limits=limits, request_timeout_seconds=2.0)
