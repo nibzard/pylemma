@@ -11,14 +11,14 @@
   <main id="content">
     <header>
       <a class="brand" href="/">PRISONER'S PYLEMMA<span>A game about trust</span></a>
-      <nav aria-label="Main navigation"><a href="/?leaderboard=1">Leaderboard</a><button type="button" class="quiet" id="help">How to play</button></nav>
+      <nav aria-label="Main navigation"><a href="/?leaderboard=1">Recent results</a><button type="button" class="quiet" id="help">How to play</button></nav>
     </header>
 
     <section id="intro" class="intro">
-      <p class="eyebrow">Friendly first. But for how long?</p>
-      <h1>What are your<br>rules for trust?</h1>
-      <p class="lead">Your player meets another player for ten rounds. Each round, both secretly choose whether to cooperate or betray.</p>
-      <p>Cooperating together earns more than betraying each other. But betraying someone who cooperates earns you the most.</p>
+      <p class="eyebrow">One rule. Ten opponents.</p>
+      <h1>Write one rule.<br>Enter the arena.</h1>
+      <p class="lead">Describe your strategy. Your player faces ten recent public players, with presets filling empty slots.</p>
+      <p>Cooperate together for 3 points each. Betray a cooperator for 5. Betray together for 1.</p>
       <div class="actions">
         <button type="button" class="primary" id="start">Create your player <span aria-hidden="true">→</span></button>
         <button type="button" id="try-demo">Try an example</button>
@@ -28,7 +28,7 @@
 
     <section id="shared" hidden tabindex="-1" aria-label="Shared game"></section>
 
-    <section id="learn" class="panel lesson" aria-labelledby="lesson-title">
+    <section id="learn" hidden class="panel lesson" aria-labelledby="lesson-title">
       <div>
         <p class="eyebrow">Learn the choices</p>
         <h2 id="lesson-title">Trust can pay. Betrayal can too.</h2>
@@ -58,7 +58,7 @@
 
     <section id="create" class="panel create-panel" aria-labelledby="create-title">
       <p class="eyebrow">Make it your own</p>
-      <h2 id="create-title">Give your player a rule to follow.</h2>
+      <h2 id="create-title">How do you deal with betrayal?</h2>
       <p>Can it earn points without getting exploited? Start with an example, or write your own rule.</p>
       <form id="builder">
         <label for="strategy">How should your player respond?</label>
@@ -72,9 +72,10 @@
         <label for="name">Player name <span class="small">You can change this.</span></label>
         <input id="name" maxlength="60" required value="The second chance" autocomplete="off">
         <label class="notice"><input id="ack" type="checkbox" required><span>Anyone with a link can see my player's name, rules, generated code, and results. I will not enter private information.</span></label>
-        <label class="notice"><input id="listed" type="checkbox"><span>List this player and its completed games publicly on the leaderboard. Leave this unchecked to keep them unlisted.</span></label>
-        <button class="primary" type="submit">Check my player's rules <span aria-hidden="true">→</span></button>
-        <p class="small">AI turns your description into a player. You can check its rules before it plays.</p>
+        <label class="notice"><input id="listed" type="checkbox"><span>List my strategy and completed games publicly. Let other arena players face this strategy.</span></label>
+        <label class="notice"><input id="preview-first" type="checkbox"><span>Let me inspect the generated rules before playing.</span></label>
+        <button class="primary" type="submit">Enter the arena <span aria-hidden="true">→</span></button>
+        <p class="small">No account or coding needed. AI builds your player once. Every round runs its saved rules.</p>
       </form>
     </section>
 

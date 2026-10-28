@@ -1,5 +1,6 @@
 """Authenticated access to the Cloudflare Durable Object record boundary."""
 
+import json
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -28,6 +29,8 @@ class RemoteMachineStore:
 
     def call(self, operation: str, **values: Any) -> Any:
         response = self.client.post("/_store", json={"operation": operation, **values})
+        if response.status_code == 404 and operation == "arena_entry":
+            return None
         if response.status_code == 404:
             raise KeyError(values.get("id"))
         response.raise_for_status()
@@ -51,8 +54,6 @@ class RemoteMachineStore:
         return Machine.model_validate_json(self.client_data("machine", identifier))
 
     def client_data(self, kind: str, identifier: UUID) -> str:
-        import json
-
         return json.dumps(self.call("get", kind=kind, id=str(identifier)))
 
     def replay(self, data: dict[str, Any]) -> UUID:
@@ -75,4 +76,18 @@ class RemoteMachineStore:
         result: dict[str, Any] = self.call(
             "public_games", ranked=ranked, offset=offset, limit=limit
         )
+        return result
+
+    def arena_entry(self, identifier: UUID) -> dict[str, Any] | None:
+        result: dict[str, Any] | None = self.call("arena_entry", id=str(identifier))
+        return result
+
+    def arena_opponents(self, identifier: UUID) -> list[Machine]:
+        return [
+            Machine.model_validate_json(json.dumps(item))
+            for item in self.call("arena_opponents", id=str(identifier))
+        ]
+
+    def arena_games(self, *, offset: int = 0, limit: int = 20) -> dict[str, Any]:
+        result: dict[str, Any] = self.call("arena_games", offset=offset, limit=limit)
         return result

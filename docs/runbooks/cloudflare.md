@@ -66,10 +66,10 @@ To pause all game execution, remove the container binding route or deploy a main
 Do not delete the Durable Object or change its `public-v1` name to reset spending limits.
 A budget increase requires a new explicit allowance and a reviewed configuration change.
 
-## Confirmed tournament execution
+## Historical tournament execution
 
-The browser creates a preview with `POST /api/machines` and `preview: true`.
-Confirmation calls `POST /api/tournaments` with the stored `machine_id`.
+Clients can create a preview with `POST /api/machines` and `preview: true`.
+The historical `POST /api/tournaments` endpoint accepts the stored `machine_id`.
 This operation shares the challenge execution allowance and makes no model request.
 Existing creation requests without preview retain their previous behavior.
 Verify old replay links after an interface deployment. They should show the result before the creation form.
@@ -107,3 +107,28 @@ No automatic per-game public-link API has been verified.
 
 A public project is public within its organization. Ordinary inspection links still require project access.
 A public trace link grants access to that trace without an invitation or sign-in.
+
+## Arena operations and funnel checks
+
+The browser calls `POST /api/arena` after storing its generated player.
+The optional preview delays this call until confirmation. Arena execution shares the challenge allowance.
+A saved entry returns before quota checks, without starting the container.
+`GET /api/arena` serves chronological public arena summaries from durable storage.
+The `arena:` keys prevent duplicate entries. Preserve these keys during maintenance.
+Internal storage requests permit 420,000 bytes. Stored records permit 400,000 JSON characters.
+These limits accommodate ten matches while retaining a bounded request body.
+
+The application records `machine.arena` and `machine.challenge` spans with `completed` and `referred` attributes.
+The browser sends `inspection_click`, `example_inspection_click`, and `share_click` events with an existing replay identifier.
+The Worker records these events in its logs without starting a container.
+Local FastAPI operation records equivalent `game.funnel` spans in Logfire.
+Count completed entries separately from clicks. Clicks do not prove publication or successful public access.
+These unauthenticated counts can contain repeated or automated events. They do not identify unique people.
+
+Before promoting the public inspection funnel, review a new arena trace and verify signed-out access.
+Include all ten matches, source attributes, and round spans in the review.
+Do not reuse another game's public trace URL or describe account-required access as public.
+
+When a result lacks public access, the browser also links to the existing reviewed public tournament.
+This example is labelled separately. Its inspection clicks have a separate event name.
+Recheck its link before promotion. Remove or replace it if public access expires.

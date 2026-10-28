@@ -5,7 +5,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Any, Protocol
+from typing import Annotated, Any, Literal, Protocol
 from uuid import UUID
 
 import logfire
@@ -17,7 +17,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from pylemma.generator import Generator
 from pylemma.machine_store import MachineStore
-from pylemma.machines import Blueprint, Machine, Sandbox, play, tournament
+from pylemma.machines import Blueprint, Machine, Sandbox, arena, play, tournament
 from pylemma.remote_store import RemoteMachineStore
 from pylemma.telemetry import configure, match_context, span
 from pylemma.trace_links import inspect_link
@@ -46,6 +46,17 @@ class Challenge(BaseModel):
     model_config = ConfigDict(extra="forbid")
     left: UUID
     right: UUID
+    referral: UUID | None = None
+
+
+class FunnelEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event: Literal["inspection_click", "example_inspection_click", "share_click"]
+    replay_id: UUID
+
+
+class ArenaRequest(TournamentRequest):
+    referral: UUID | None = None
 
 
 def create_app(
@@ -182,6 +193,63 @@ def create_app(
                         "No completed result was recorded.",
                     ) from None
 
+    @app.get("/api/arena")
+    def recent_arena(
+        offset: Annotated[int, Query(ge=0, le=100000)] = 0,
+        limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    ) -> dict[str, Any]:
+        return store.arena_games(offset=offset, limit=limit)
+
+    @app.post("/api/arena", status_code=201)
+    async def enter_arena(body: ArenaRequest) -> dict[str, Any]:
+        player = machine(body.machine_id)
+        saved = store.arena_entry(player.id)
+        if saved is not None:
+            return saved
+        if gate.locked():
+            raise HTTPException(429, "Another game is running. Try again shortly.")
+        async with gate:
+            if not store.reserve_challenge(daily_limit * 20):
+                raise HTTPException(429, "The daily game allowance is exhausted.")
+            with match_context(telemetry), span("machine.arena") as operation:
+                try:
+                    opponents = store.arena_opponents(player.id)
+                    result = await asyncio.to_thread(arena, sandbox, player, opponents)
+                    data = {
+                        "kind": "arena",
+                        "machine": player.model_dump(mode="json"),
+                        "result": result,
+                        "trace_id": operation.trace_id,
+                    }
+                    replay_id = store.replay(data)
+                    operation.set(
+                        machine_id=str(player.id),
+                        replay_id=str(replay_id),
+                        completed=True,
+                        referred=body.referral is not None,
+                    )
+                    return {"replay_id": replay_id, **data}
+                except Exception:
+                    raise HTTPException(
+                        422,
+                        "A player stopped during the arena. "
+                        "No completed result was recorded. Try again later.",
+                    ) from None
+
+    @app.post("/api/events", status_code=204)
+    async def funnel_event(body: FunnelEvent) -> Response:
+        # Collect only a bounded event name and an existing replay reference.
+        try:
+            store.read(body.replay_id)
+        except KeyError:
+            raise HTTPException(404, "Replay not found.") from None
+        with (
+            match_context(telemetry),
+            span("game.funnel", event=body.event, replay_id=str(body.replay_id)),
+        ):
+            pass
+        return Response(status_code=204)
+
     @app.post("/api/challenges", status_code=201)
     async def challenge(body: Challenge) -> dict[str, Any]:
         left, right = machine(body.left), machine(body.right)
@@ -205,6 +273,11 @@ def create_app(
                             "result": result,
                             "trace_id": operation.trace_id,
                         }
+                    )
+                    operation.set(
+                        completed=True,
+                        referred=body.referral is not None,
+                        replay_id=str(replay),
                     )
                     return {"replay_id": replay, "result": result}
                 except Exception:

@@ -242,7 +242,7 @@ See [the deployment decision](decisions/005-cloudflare-container-storage.md) and
 ## First-visit interface
 
 The interface calls each machine a player. Stored `Machine` contracts and API identifiers retain their existing names.
-Preview mode validates and stores code before execution. The tournament endpoint executes that same version after confirmation.
+Creation validates and stores code before execution. The optional preview delays execution until confirmation.
 It shares the execution quota with challenges and makes no provider request.
 `web/static/story.mjs` derives factual explanations from completed choices and contains version-specific reference scores.
 It never changes authoritative scores or requests another explanation from a model.
@@ -268,3 +268,20 @@ These are navigation settings, not credentials. They do not change stored game o
 The browser reloads a saved replay after completion so new games receive the same inspection metadata as shared replays.
 Public sharing links take precedence over ordinary project trace filters.
 Only the verified public-trace path accepts the narrow `spanId` highlight parameter.
+
+## Arena entry and inspection
+
+An arena is one completed set of ten matches for an immutable machine.
+`machines.arena` executes a selected opponent list and fills empty slots with labelled presets.
+The host selects recent distinct public machines with completed games. Preview-only machines are not eligible.
+`MachineStore` uses a unique machine-to-replay table. The Durable Object uses an equivalent transactional key.
+Saved entries return before execution allowance checks. Reads and retries make no provider request.
+Public arena summaries use completion order without ranks. Historical fixed-suite ranks remain separate.
+
+Each match trace includes source code and hashes. Each round stores its span reference.
+The browser selects a factual event and highlights its recorded span only on the verified public-trace URL format.
+Account-required and unavailable states remain explicit.
+Share controls open a composer or copy an invitation. They never publish a post automatically.
+
+A result without public trace access also offers the existing reviewed example, explicitly labelled as a separate tournament.
+Its click event is separate from inspection of the visitor's own game.

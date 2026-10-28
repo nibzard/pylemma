@@ -1,4 +1,4 @@
-import { REFERENCES, POLICIES, label, findings, outcome, comparison } from './story.mjs';
+import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl } from './story.mjs';
 
 const $ = selector => document.querySelector(selector);
 const status = $('#status');
@@ -6,6 +6,7 @@ const shared = $('#shared');
 const review = $('#review');
 const params = new URLSearchParams(location.search);
 const targetId = params.get('challenge');
+const referral = params.get('ref') === 'share' ? targetId : null;
 let target = null;
 let activeMachine = null;
 let activeReplay = params.get('replay');
@@ -67,6 +68,7 @@ function showBuilder(machine) {
     $('#listed').checked = machine.public_listing === true;
     previousReplay = activeReplay;
   }
+  $('#builder [type=submit]').textContent = target ? 'Challenge this strategy' : 'Enter the arena';
   focus($('#strategy'));
 }
 function sharedLayout() {
@@ -92,21 +94,43 @@ function choiceCard(name, choice, points) {
     el('span', `${points} ${points === 1 ? 'point' : 'points'}`, 'points'));
   return card;
 }
+function track(event) {
+  if (!activeReplay) return;
+  void fetch('/api/events', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({event,replay_id:activeReplay}),keepalive:true}).catch(()=>{});
+}
+function sharing(machine, result) {
+  const card = el('div', undefined, 'panel share-card');
+  card.append(el('p', "Prisoner's Pylemma", 'eyebrow'), el('h2',machine.name),
+    el('p',machine.strategy.length > 160 ? machine.strategy.slice(0,157)+'…' : machine.strategy),
+    el('p',`${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'}.`, 'lead'));
+  const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id,ref:'share'});
+  const post = el('a','Share on X','inspect-button');
+  post.href = 'https://twitter.com/intent/tweet?' + new URLSearchParams({text:shareText(machine,result),url});
+  post.target = '_blank'; post.rel = 'noopener noreferrer';
+  post.onclick = () => track('share_click');
+  const copy = button('Copy challenge link',()=>copyChallenge(machine,copy));
+  card.append(post,document.createTextNode(' '),copy);
+  return card;
+}
 async function copyChallenge(machine, control) {
-  const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id});
+  track('share_click');
+  const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id,ref:'share'});
   try {
     await navigator.clipboard.writeText(url);
     control.textContent = 'Challenge link copied';
     message('Challenge link copied. Send it to someone and see how their player responds.');
   } catch { message('Your challenge link: ' + url, true); }
 }
-function traceDetails(data, container) {
-  const action = data.logfire_url ? el('a', 'Inspect in Logfire', 'inspect-button') :
-    el('button', 'Inspect in Logfire');
+function traceDetails(data, container, selected) {
+  if (selected) container.append(el('p',selected.text,'finding'));
+  const action = data.logfire_url ? el('a', selected ? 'Inspect this decision in Logfire' : 'Inspect in Logfire', 'inspect-button') :
+    el('button', selected ? 'Inspect this decision in Logfire' : 'Inspect in Logfire');
   if (data.logfire_url) {
-    action.href = data.logfire_url;
+    action.href = inspectionUrl(data, selected?.spanId);
     action.target = '_blank';
     action.rel = 'noopener noreferrer';
+    action.onclick = () => track('inspection_click');
   } else {
     action.type = 'button';
     action.disabled = true;
@@ -116,7 +140,16 @@ function traceDetails(data, container) {
     'Open the complete game trace. No Logfire account is needed.' :
     data.logfire_url ? 'A Logfire account with access to this project is required.' :
     'The Logfire link for this game is not available.', 'small'));
+  if (selected) box.append(el('p', `Find round ${selected.round} in the match with ${selected.opponent}.`, 'small'));
   box.append(el('p', 'Inspect the information each player received, its returned choices, and execution timing.', 'small'));
+  if (data.logfire_access !== 'public') {
+    const example = el('a','Inspect a reviewed example in Logfire');
+    example.href = 'https://logfire-eu.pydantic.dev/public-trace/44e57f30-c25a-47fe-b85f-5db1d0604010?spanId=4ed36f7dff63d8fe';
+    example.target = '_blank'; example.rel = 'noopener noreferrer';
+    example.onclick = () => track('example_inspection_click');
+    box.append(example,el('p', 'This separate recorded tournament opens without a Logfire account.', 'small'));
+  }
+
   container.append(box);
 }
 
@@ -176,26 +209,33 @@ function showResult(data) {
   review.hidden = true;
   shared.replaceChildren(el('p', 'The results', 'eyebrow'));
   const summary = el('div'); summary.id = 'result-summary';
-  if (data.kind === 'tournament') {
+  if (['tournament','arena'].includes(data.kind)) {
     activeMachine = data.machine;
     summary.append(el('h1', data.machine.name));
     const score = el('p', String(data.result.total), 'score');
-    score.append(el('span', 'points across three matches'));
+    score.append(el('span', `points across ${data.result.matches.length} matches`));
     summary.append(score, el('p', data.machine.blueprint.summary));
     shared.append(summary);
-    traceDetails(data, summary);
+    const featured = data.result.matches.find(m=>m.rounds.some(r=>r.choices.includes('betray'))) || data.result.matches[0];
+    const selected = {...highlight(featured,[data.machine.name,featured.opponent]),opponent:featured.opponent};
+    selected.spanId = featured.rounds.find(r=>r.round === selected.round)?.span_id;
+    traceDetails(data, summary, selected);
+    if (data.kind === 'arena') {
+      const presets = data.result.matches.filter(m=>m.preset).length;
+      summary.append(el('p', `Ten rounds per opponent. ${presets} of the ten opponents are presets.`, 'small'),
+        el('p','Entrants can face different opponents. These scores are not a global ranking.','small'));
+    }
     if (data.result.suite_version === 'trust-v1' && data.result.rules_version === 'pd-v1') {
       shared.append(refsView(data.result.total));
     }
     const actions = el('div', undefined, 'actions');
-    const share = button('Challenge a friend', () => copyChallenge(data.machine, share));
-    actions.append(button('Change one rule and compare', () => showBuilder(data.machine), 'primary'), share);
-    shared.append(actions, el('h2', 'Where the points came from'));
+    actions.append(button('Revise strategy', () => showBuilder(data.machine), 'primary'));
+    shared.append(actions, sharing(data.machine,data.result), el('h2', 'Where the points came from'));
     for (const match of data.result.matches) {
-      shared.append(matchView(match, [data.machine.name, match.opponent], POLICIES[match.opponent]));
+      shared.append(matchView(match, [data.machine.name, match.opponent], match.preset === false ? undefined : POLICIES[match.opponent]));
     }
     shared.append(technical(data.machine));
-    void previousComparison(data);
+    if (data.kind === 'tournament') void previousComparison(data);
   } else {
     activeMachine = null;
     const names = data.machines.map(machine => machine.name);
@@ -204,8 +244,12 @@ function showResult(data) {
     summary.append(el('h1', equal ? 'A draw. What would you change?' : `${winner} earned more points.`));
     summary.append(el('p', names.join(' vs '), 'lead'));
     shared.append(summary);
-    traceDetails(data, summary);
-    shared.append(matchView(data.result, names));
+    const selected = {...highlight(data.result,names),opponent:names[1]};
+    selected.spanId = data.result.rounds.find(r=>r.round === selected.round)?.span_id;
+    traceDetails(data, summary, selected);
+    shared.append(matchView(data.result, names), sharing(data.machines[0],{
+      total:data.result.totals[0],matches:[data.result],
+    }));
     const actions = el('div', undefined, 'actions');
     data.machines.forEach(machine => actions.append(link('Challenge ' + machine.name, {challenge:machine.id})));
     shared.append(actions);
@@ -215,10 +259,10 @@ function showResult(data) {
       shared.append(panel);
     });
   }
-  const listed = data.kind === 'tournament' ? data.machine.public_listing === true :
+  const listed = ['tournament','arena'].includes(data.kind) ? data.machine.public_listing === true :
     data.machines.every(machine => machine.public_listing === true);
   shared.append(el('p', listed ? 'This completed game is listed publicly.' : 'This game is unlisted. It does not appear in public game lists.', 'small'));
-  shared.append(link('See the global leaderboard', {leaderboard:'1'}));
+  shared.append(link('See recent arena results', {leaderboard:'1'}));
 
   shared.append(el('p', 'These points describe this game. They do not measure intelligence or real-world trustworthiness.', 'small'));
   message('');
@@ -240,15 +284,15 @@ function preview(machine) {
   review.replaceChildren(el('p', 'Check before you play', 'eyebrow'), el('h2', machine.name + "'s rules"),
     el('p', machine.blueprint.summary, 'lead'), el('p', 'Does this match what you meant? Check the summary and change your description if it does not.'));
   if (target) review.append(el('p', 'Your player will face ' + target.name + ' for ten rounds.'));
-  else review.append(el('p', 'Your player will play ten rounds against each of three opponents with different rules. Your score adds all thirty rounds.'));
+  else review.append(el('p', 'Your player faces ten recent public players. Presets fill any empty slots.'));
   const actions = el('div', undefined, 'actions');
   const confirm = button(target ? 'Use these rules and challenge' : 'Use these rules and play', () => run(confirm, async () => {
     if (target) {
-      const data = await api('/api/challenges', {left:machine.id, right:target.id});
+      const data = await api('/api/challenges', {left:machine.id, right:target.id, referral});
       await saveResult(data, 'challenge');
     } else {
-      const data = await api('/api/tournaments', {machine_id:machine.id});
-      await saveResult(data, 'tournament');
+      const data = await api('/api/arena', {machine_id:machine.id});
+      await saveResult(data, 'arena');
     }
   }, 'Playing your confirmed rules. Each pair of choices is revealed together…'), 'primary');
   actions.append(confirm, button('Change my description', () => showBuilder(machine)));
@@ -261,11 +305,11 @@ function invitation(machine) {
   sharedLayout();
   shared.replaceChildren(el('p', 'You have been challenged', 'eyebrow'), el('h1', `Can your player beat ${machine.name}?`));
   const panel = el('div', undefined, 'panel');
-  panel.append(el('h2', machine.name + "'s rules"), el('p', machine.blueprint.summary, 'lead'),
+  panel.append(el('h2', machine.name + "'s rules"), el('p', machine.strategy, 'lead'),
     el('p', 'Create a player to face it for ten rounds. The player with more points wins. Equal scores mean a draw.'));
   shared.append(panel);
   const actions = el('div', undefined, 'actions');
-  actions.append(button('Create a challenger', () => showBuilder(), 'primary'), button('Learn the choices', showLesson));
+  actions.append(button('Challenge this strategy', () => showBuilder(), 'primary'), button('Learn the choices', showLesson));
   shared.append(actions, technical(machine));
 }
 function showLesson() {
@@ -280,19 +324,19 @@ async function leaderboard() {
   const rawOffset = Number(params.get('offset') || 0);
   const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
   shared.replaceChildren(el('p', 'The public games', 'eyebrow'),
-    el('h1', all ? 'Every public game.' : 'Whose rules earn the most?'));
+    el('h1', all ? 'Every public game.' : 'Recent arena results'));
   const actions = el('div', undefined, 'actions');
-  actions.append(link('Tournament leaderboard', {leaderboard:'1'}),
+  actions.append(link('Recent arena results', {leaderboard:'1'}),
     link('All public games', {leaderboard:'1',view:'all'}),
     button('Create your player', () => showBuilder(), 'primary'));
   actions.querySelectorAll('a')[all ? 1 : 0].setAttribute('aria-current', 'page');
   shared.append(actions);
   shared.append(el('p', all ?
-    'Completed public tournaments and challenges, newest first. Challenge scores depend on the opponent.' :
-    'Every completed public tournament counts. Each player faces the same three opponents for thirty rounds. Equal scores share a rank.'));
+    'Completed public arenas, tournaments, and challenges, newest first.' :
+    'One result per strategy, newest first. Entrants can face different opponents. These scores are not a global ranking.'));
   shared.append(el('p', 'Only players that permit public listing appear here. Existing unlisted games stay unlisted.', 'small'));
   message('Loading public games…');
-  const data = await api(`${all ? '/api/games' : '/api/leaderboard'}?offset=${offset}&limit=20`);
+  const data = await api(`${all ? '/api/games' : '/api/arena'}?offset=${offset}&limit=20`);
   message('');
   if (!data.entries.length) {
     shared.append(el('p', data.total ? 'There are no games on this page.' :
@@ -304,16 +348,16 @@ async function leaderboard() {
     box.setAttribute('role', 'region');
     box.setAttribute('aria-label', 'Scrollable table of public games');
     const table = el('table', undefined, 'board');
-    table.append(el('caption', all ? 'All completed public games' : 'Tournament scores · trust-v1 · pd-v1'));
+    table.append(el('caption', all ? 'All completed public games' : 'Recent arena results · arena-v1 · pd-v1'));
     const head = el('tr');
-    for (const title of all ? ['Game', 'Players', 'Points', 'Played', 'Replay'] : ['Rank', 'Player', 'Points', 'Replay', 'Challenge']) {
+    for (const title of all ? ['Game', 'Players', 'Points', 'Played', 'Replay'] : ['Game', 'Player', 'Points', 'Replay', 'Challenge']) {
       const th = el('th', title); th.scope = 'col'; head.append(th);
     }
     const thead = el('thead'); thead.append(head); table.append(thead);
     const body = el('tbody');
     for (const entry of data.entries) {
       const row = el('tr');
-      row.append(el('td', all ? (entry.kind === 'tournament' ? 'Tournament' : 'Challenge') : String(entry.rank)),
+      row.append(el('td', all ? ({arena:'Arena',tournament:'Tournament',challenge:'Challenge'}[entry.kind]) : 'Arena'),
         el('td', entry.players.map(player => player.name).join(' vs ')),
         el('td', entry.scores.join(' / ')));
       if (all) {
@@ -371,10 +415,21 @@ $('#builder').onsubmit = event => {
     });
     const values = {player:data.machine.id};
     if (target) values.challenge = target.id;
+    if (referral) values.ref = 'share';
     if (previousReplay) values.compare = previousReplay;
     history.replaceState(null, '', '/?' + new URLSearchParams(values));
-    preview(data.machine);
-  }, 'Turning your description into a player and checking that its rules can run…');
+    if ($('#preview-first').checked) {
+      preview(data.machine);
+    } else {
+      activeMachine = data.machine;
+      message(target ? 'Playing your challenge…' : 'Your player is facing ten opponents…');
+      try {
+        const result = target ? await api('/api/challenges',{left:data.machine.id,right:target.id,referral}) :
+          await api('/api/arena',{machine_id:data.machine.id});
+        await saveResult(result,target ? 'challenge' : 'arena');
+      } catch (error) { preview(data.machine); throw error; }
+    }
+  }, 'Building your player and checking its rules…');
 };
 showDemo();
 (async () => {

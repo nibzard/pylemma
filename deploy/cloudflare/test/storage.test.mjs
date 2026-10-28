@@ -69,3 +69,24 @@ test('indexes only consented completed games and preserves shared ranks across p
   await assert.rejects(operate(storage,{operation:'public_games',ranked:true,limit:100}));
   assert.equal([...storage.values.keys()].filter(k=>k.startsWith('public:')).length,4);
 });
+
+test('arena entries are unique, consented, chronological, and select distinct recent opponents',async()=>{
+  const storage = new Storage();
+  const id = n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+  for (let n=1;n<=12;n++) {
+    const machine={id:id(n),name:String(n),public_listing:n !== 12};
+    await operate(storage,{operation:'put',kind:'machine',id:machine.id,data:machine});
+    const data={kind:'arena',machine,created_at:`2026-10-28T12:00:${String(n).padStart(2,'0')}+00:00`,
+      result:{total:273,rules_version:'pd-v1',suite_version:'arena-v1',
+        matches:Array.from({length:10},()=>({rounds:Array(10).fill({})}))}};
+    await operate(storage,{operation:'put',kind:'replay',id:id(n+20),data});
+    await assert.rejects(operate(storage,{operation:'put',kind:'replay',id:id(n+40),data}));
+  }
+  const selected=await operate(storage,{operation:'arena_opponents',id:id(11)});
+  assert.deepEqual(selected.map(m=>m.name),['10','9','8','7','6','5','4','3','2','1']);
+  const page=await operate(storage,{operation:'arena_games',limit:2});
+  assert.equal(page.total,11); assert.equal(page.entries[0].players[0].name,'11');
+  assert.equal(page.entries[0].rank,undefined); assert.equal(page.next_offset,2);
+  assert.equal((await operate(storage,{operation:'arena_entry',id:id(1)})).replay_id,id(21));
+  assert.equal(await operate(storage,{operation:'arena_entry',id:id(99)}),null);
+});

@@ -8,16 +8,15 @@ def entry(identifier: str, data: dict[str, Any]) -> dict[str, Any] | None:
     """List only complete games whose participating visitors permit discovery."""
     kind = data.get("kind")
     result = data.get("result", {})
-    if kind == "tournament":
+    if kind in ("tournament", "arena"):
         machines = [data.get("machine", {})]
         matches = result.get("matches", [])
-        if len(matches) != 3 or any(
+        if len(matches) != (10 if kind == "arena" else 3) or any(
             len(match.get("rounds", [])) != 10 for match in matches
         ):
             return None
-        if (
-            result.get("rules_version") != "pd-v1"
-            or result.get("suite_version") != "trust-v1"
+        if result.get("rules_version") != "pd-v1" or result.get("suite_version") != (
+            "arena-v1" if kind == "arena" else "trust-v1"
         ):
             return None
         scores = [result.get("total")]
@@ -33,7 +32,11 @@ def entry(identifier: str, data: dict[str, Any]) -> dict[str, Any] | None:
     if (
         not machines
         or any(m.get("public_listing") is not True for m in machines)
-        or any(type(score) is not int or not 0 <= score <= 150 for score in scores)
+        or any(
+            type(score) is not int
+            or not 0 <= score <= (500 if kind == "arena" else 150)
+            for score in scores
+        )
     ):
         return None
     return {

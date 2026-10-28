@@ -47,3 +47,32 @@ export function comparison(total, baseline = REFERENCES[0]) {
   const amount = Math.abs(difference);
   return `Your player earned ${amount} ${amount === 1 ? 'point' : 'points'} ${difference > 0 ? 'more' : 'fewer'} than a player that always cooperates against these same opponents.`;
 }
+
+/** Select a factual round for inspection, without assigning intent. */
+export function highlight(match, names) {
+  const rounds = match.rounds;
+  const afterThree = rounds.find((round, index) => round.choices[0] === 'cooperate' &&
+    rounds.slice(0,index).filter(r=>r.choices[1] === 'betray').length >= 3);
+  if (afterThree) return {round:afterThree.round,
+    text:`${names[0]} cooperated in round ${afterThree.round} after at least three earlier betrayals by ${names[1]}.`};
+  const first = rounds.find(r=>r.choices.includes('betray'));
+  if (first) return {round:first.round, text:findings(match,names)[0]};
+  return {round:1, text:'Both players cooperated in every round. Each earned 30 points.'};
+}
+
+export function shareText(machine, result) {
+  const rule = machine.strategy.length > 80 ? machine.strategy.slice(0,77) + '…' : machine.strategy;
+  return `${machine.name}: “${rule}”\n${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'} in Prisoner’s Pylemma.\nCan your strategy do better?`;
+}
+
+
+/** Highlight only the already verified public-trace URL format. */
+export function inspectionUrl(data, spanId) {
+  if (!data.logfire_url) return null;
+  if (data.logfire_access !== 'public' || !/^[a-f0-9]{16}$/i.test(spanId || '')) return data.logfire_url;
+  const url = new URL(data.logfire_url);
+  if (/^\/public-trace\/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(url.pathname)) {
+    url.searchParams.set('spanId',spanId);
+  }
+  return url.href;
+}

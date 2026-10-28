@@ -40,3 +40,24 @@ test('provides an explicit reference and labels the result without declaring ove
   assert.equal(outcome({totals:[30,30]},['A','B']),'A draw: 30 points each.');
   assert.equal(outcome({totals:[20,25]},['A','B']),'B earned 25 points; A earned 20.');
 });
+
+// Arena facts and sharing must use recorded results, not fixed-suite baselines.
+test('arena highlight identifies a recorded decision after repeated betrayal', async()=>{
+  const {highlight,shareText} = await import('../../src/pylemma/web/static/story.mjs');
+  const rounds = Array.from({length:10},(_,i)=>({round:i+1,choices:['cooperate','betray']}));
+  assert.deepEqual(highlight({rounds},['Forgiver','Other']),{
+    round:4,text:'Forgiver cooperated in round 4 after at least three earlier betrayals by Other.'});
+  const text = shareText({name:'Forgiver',strategy:'Forgive once.'},{total:238,matches:Array(10)});
+  assert.match(text,/238 points against 10 players/);
+  assert.match(text,/Forgive once/);
+  assert.doesNotMatch(text,/rank|best/i);
+});
+
+test('inspection highlights a recorded span only on a reviewed public trace', async()=>{
+  const {inspectionUrl} = await import('../../src/pylemma/web/static/story.mjs');
+  const publicUrl='https://logfire-eu.pydantic.dev/public-trace/00000000-0000-0000-0000-000000000000';
+  assert.equal(inspectionUrl({logfire_url:publicUrl,logfire_access:'public'},'1234567890abcdef'), publicUrl+'?spanId=1234567890abcdef');
+  assert.equal(inspectionUrl({logfire_url:publicUrl,logfire_access:'account'},'1234567890abcdef'), publicUrl);
+  assert.equal(inspectionUrl({logfire_url:publicUrl,logfire_access:'public'},'invalid'), publicUrl);
+  assert.equal(inspectionUrl({},'1234567890abcdef'),null);
+});

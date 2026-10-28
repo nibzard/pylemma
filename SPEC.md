@@ -8,6 +8,8 @@ Public subtitle: **Prisoner's Pylemma**.
 
 This file defines the first release. It does not describe an existing implementation.
 
+The [simple arena contract](#simple-arena-contract) defines the current browser entry and supersedes the fixed tournament default.
+
 ## Machine release contract
 
 This contract supersedes conflicting behavior in sections 1, 2, 4 through 15, and 17 through 19.
@@ -1373,3 +1375,37 @@ Reject unrelated parameters, duplicate parameters, fragments, credentials, and p
 Public sharing exposes the complete trace. A selected span does not restrict disclosure to that span.
 Creating account-free public links remains an operator action through Logfire's documented sharing controls.
 Do not describe ordinary project links, project visibility, or connected-app handoffs as account-free public sharing.
+
+## Simple arena contract
+
+This accepted contract supersedes the fixed tournament as the default browser experience.
+Existing tournament endpoints and historical replays remain supported.
+
+A visitor enters a strategy through one form. Code inspection is optional.
+The public-record acknowledgement remains required. Public discovery consent remains optional.
+Each immutable strategy receives at most one completed arena result.
+Repeated entry returns that saved result without execution or another allowance reservation.
+
+An arena contains ten matches of ten rounds each, using pd-v1 scoring.
+Select the ten most recent distinct strategies with completed public games, excluding the entrant.
+Use completion time, then replay identifier, to order candidates.
+Only strategies with explicit public discovery consent are eligible.
+Fill missing slots by cycling Optimist, Grudge Holder, and Opportunist in that order.
+Store the selected identities, source hashes, preset labels, and all completed matches.
+A failed match produces no completed arena result. A retry can select a new opponent set.
+
+Arena points sum the entrant's points across the ten matches.
+Recent arena results use completion order without ranks. Entrants can face different opponents.
+Public arena results require the entrant's consent and public eligibility for every visitor opponent.
+
+Results show a factual event, an explicitly labelled Logfire action, and revision and sharing controls.
+Sharing opens an X composer or copies a challenge link. The visitor publishes the post.
+Share cards contain the strategy name, short rule, score, and opponent count.
+Shared invitations show the strategy first and offer a direct challenge.
+Funnel events count completed entries, inspection clicks, share clicks, and referral completions.
+Clicks do not prove publication or successful trace access.
+Public trace publication retains the full review procedure. No public address is invented.
+Daily tournaments, accounts, accumulated points, and ranked matchmaking remain outside this phase.
+
+If a game's trace is restricted or unavailable, offer the existing reviewed public example with an explicit separate-example label.
+Count example inspection clicks separately from inspection of the visitor's own game.

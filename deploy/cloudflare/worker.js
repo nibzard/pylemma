@@ -36,13 +36,13 @@ export class Pylemma extends Container {
         return Response.json({detail:'Storage operation failed.'}, {status:400});
       }
     }
-    if (request.method === 'GET' && ['/api/leaderboard','/api/games'].includes(path)) {
+    if (request.method === 'GET' && ['/api/leaderboard','/api/games','/api/arena'].includes(path)) {
       const query = new URL(request.url).searchParams;
       const offset = Number(query.get('offset') ?? 0);
       const limit = Number(query.get('limit') ?? 20);
       try {
         return Response.json(await operate(this.ctx.storage, {
-          operation:'public_games', ranked:path === '/api/leaderboard', offset, limit,
+          operation:path === '/api/arena' ? 'arena_games' : 'public_games', ranked:path === '/api/leaderboard', offset, limit,
         }));
       } catch {
         return Response.json({detail:'Use a valid page with between 1 and 50 games.'}, {status:422});
@@ -60,8 +60,31 @@ export class Pylemma extends Container {
       }
       return Response.json(result ?? {detail:'Record not found.'}, {status:result ? 200 : 404});
     }
-    if (request.method !== 'POST' || !['/api/machines','/api/challenges','/api/tournaments'].includes(path)) {
+    if (request.method !== 'POST' || !['/api/machines','/api/challenges','/api/tournaments','/api/arena','/api/events'].includes(path)) {
       return Response.json({detail:'Not found.'}, {status:404});
+    }
+    if (path === '/api/events') {
+      let input;
+      try { input = await request.json(); } catch { return new Response(null,{status:422}); }
+      if (!input || !['inspection_click','example_inspection_click','share_click'].includes(input.event) ||
+          !validId(input.replay_id) || Object.keys(input).some(k=>!['event','replay_id'].includes(k))) {
+        return new Response(null,{status:422});
+      }
+      if (!await this.ctx.storage.get('replay:'+input.replay_id)) return new Response(null,{status:404});
+      // Worker logs preserve the funnel without starting a container for a click.
+      console.log(JSON.stringify({event:input.event,replay_id:input.replay_id}));
+      return new Response(null,{status:204});
+    }
+    if (path === '/api/arena') {
+      let input;
+      try { input = await request.clone().json(); } catch { return new Response(null,{status:422}); }
+      if (!input || !validId(input.machine_id) ||
+          (input.referral != null && !validId(input.referral)) ||
+          Object.keys(input).some(k=>!['machine_id','referral'].includes(k))) {
+        return Response.json({detail:'Supply a player identifier.'},{status:422});
+      }
+      const saved = await operate(this.ctx.storage,{operation:'arena_entry',id:input.machine_id});
+      if (saved) return Response.json(saved,{status:201});
     }
     const lifetime = await this.ctx.storage.get(path === '/api/machines' ?
       'lifetime:generation' : 'lifetime:challenge') || 0;
@@ -88,15 +111,15 @@ export class Pylemma extends Container {
           (input.public_listing !== undefined && typeof input.public_listing !== 'boolean') || Object.keys(input).some(k=>!['name','strategy','public_acknowledged','preview','public_listing'].includes(k))) {
         return Response.json({detail:'Supply a name, strategy, and public record acknowledgement.'}, {status:422});
       }
-    } else if (path === '/api/tournaments') {
-      if (!validId(input.machine_id) || Object.keys(input).some(k=>k !== 'machine_id')) {
+    } else if (['/api/tournaments','/api/arena'].includes(path)) {
+      if (!validId(input.machine_id) || Object.keys(input).some(k=>!['machine_id',...(path === '/api/arena' ? ['referral'] : [])].includes(k))) {
         return Response.json({detail:'Supply a player identifier.'}, {status:422});
       }
       if (!await this.ctx.storage.get('machine:'+input.machine_id)) {
         return Response.json({detail:'Player not found.'}, {status:404});
       }
     } else {
-      if (!validId(input.left) || !validId(input.right) || Object.keys(input).some(k=>!['left','right'].includes(k))) {
+      if (!validId(input.left) || !validId(input.right) || (input.referral != null && !validId(input.referral)) || Object.keys(input).some(k=>!['left','right','referral'].includes(k))) {
         return Response.json({detail:'Supply two machine identifiers.'}, {status:422});
       }
       if (!await this.ctx.storage.get('machine:'+input.left) || !await this.ctx.storage.get('machine:'+input.right)) {
@@ -138,7 +161,7 @@ export default {
     let response;
     if (url.pathname.startsWith('/api/') || url.pathname === '/_store') {
       if (request.method === 'POST') {
-        const maxBytes = url.pathname === '/_store' ? 120_000 : 8_192;
+        const maxBytes = url.pathname === '/_store' ? 420_000 : 8_192;
         const body = await limitedBody(request, maxBytes);
         if (body === null) return Response.json({detail:'Request too large.'}, {status:413});
         request = new Request(request, {body});

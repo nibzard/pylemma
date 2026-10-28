@@ -48,3 +48,34 @@ def test_remote_contracts_and_authentication() -> None:
             store.get(uuid4())
     finally:
         store.close()
+
+
+def test_remote_arena_operations() -> None:
+    machine = Machine.create("Public", "Cooperate", presets()[0], public_listing=True)
+    calls = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        calls.append(body)
+        if body["operation"] == "arena_entry":
+            return httpx.Response(404, json=None)
+        if body["operation"] == "arena_opponents":
+            return httpx.Response(200, json=[machine.model_dump(mode="json")])
+        return httpx.Response(
+            200, json={"entries": [], "total": 0, "next_offset": None}
+        )
+
+    store = RemoteMachineStore(
+        "https://example.test", "synthetic", transport=httpx.MockTransport(respond)
+    )
+    try:
+        assert store.arena_entry(machine.id) is None
+        assert store.arena_opponents(machine.id) == [machine]
+        assert store.arena_games()["total"] == 0
+        assert [body["operation"] for body in calls] == [
+            "arena_entry",
+            "arena_opponents",
+            "arena_games",
+        ]
+    finally:
+        store.close()

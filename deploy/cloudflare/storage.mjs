@@ -8,6 +8,31 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validId = id => typeof id === 'string' && UUID.test(id);
 
 export async function operate(storage, input, now = new Date()) {
+  if (input.operation === 'arena_entry') {
+    if (!validId(input.id)) throw new Error('Invalid identifier.');
+    const replayId = await storage.get('arena:'+input.id);
+    return replayId ? {replay_id:replayId, ...await storage.get('replay:'+replayId)} : null;
+  }
+  if (input.operation === 'arena_opponents') {
+    if (!validId(input.id)) throw new Error('Invalid identifier.');
+    const entries = await storage.list({prefix:'public:'});
+    const rows = publicPage([...entries.values()],false,0,entries.size).entries;
+    const selected = new Map();
+    for (const row of rows) for (const player of row.players) {
+      if (player.id === input.id || selected.has(player.id)) continue;
+      const machine = await storage.get('machine:'+player.id);
+      if (machine?.public_listing === true) selected.set(player.id,machine);
+      if (selected.size === 10) return [...selected.values()];
+    }
+    return [...selected.values()];
+  }
+  if (input.operation === 'arena_games') {
+    const {offset=0,limit=20} = input;
+    if (!Number.isInteger(offset) || offset < 0 || offset > 100000 ||
+        !Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error('Invalid page.');
+    const entries = await storage.list({prefix:'public:'});
+    return publicPage([...entries.values()].filter(row=>row.kind === 'arena'),false,offset,limit);
+  }
   if (input.operation === 'public_games') {
     const {ranked, offset=0, limit=20} = input;
     if (typeof ranked !== 'boolean' || !Number.isInteger(offset) || offset < 0 || offset > 100000 ||
@@ -41,9 +66,15 @@ export async function operate(storage, input, now = new Date()) {
   if (input.operation === 'get') return await storage.get(key) ?? null;
   if (input.operation === 'put') {
     if (!input.data || typeof input.data !== 'object') throw new Error('Invalid data.');
-    if (JSON.stringify(input.data).length > 100_000) throw new Error('Record too large.');
+    if (JSON.stringify(input.data).length > 400_000) throw new Error('Record too large.');
     return storage.transaction(async tx => {
       if (await tx.get(key)) throw new Error('Record already exists.');
+      if (input.kind === 'replay' && input.data.kind === 'arena') {
+        const machineId = input.data.machine?.id;
+        if (!validId(machineId)) throw new Error('Invalid arena player.');
+        if (await tx.get('arena:'+machineId)) throw new Error('Arena entry already exists.');
+        await tx.put('arena:'+machineId,input.id);
+      }
       await tx.put(key, input.data);
       if (input.kind === 'replay') {
         const summary = publicEntry(input.id, input.data);

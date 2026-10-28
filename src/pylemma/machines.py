@@ -133,9 +133,11 @@ def play(sandbox: Sandbox, left: Blueprint, right: Blueprint) -> dict[str, Any]:
         "machine.match",
         left_hash=sha256(left.code.encode()).hexdigest(),
         right_hash=sha256(right.code.encode()).hexdigest(),
+        left_source=left.code,
+        right_source=right.code,
     ) as operation:
         for number in range(1, 11):
-            with span("machine.round", round_number=number):
+            with span("machine.round", round_number=number) as round_span:
                 observations = [
                     {
                         "round": number,
@@ -157,6 +159,7 @@ def play(sandbox: Sandbox, left: Blueprint, right: Blueprint) -> dict[str, Any]:
                 rounds.append(
                     {
                         "round": number,
+                        "span_id": round_span.span_id,
                         "choices": [a.choice, b.choice],
                         "reasons": [a.stated_reason, b.stated_reason],
                         "points": list(points),
@@ -184,6 +187,53 @@ def tournament(sandbox: Sandbox, machine: Machine) -> dict[str, Any]:
     return {
         "rules_version": "pd-v1",
         "suite_version": "trust-v1",
+        "matches": matches,
+        "total": sum(m["totals"][0] for m in matches),
+        "combined": sum(m["combined"] for m in matches),
+    }
+
+
+def arena(
+    sandbox: Sandbox, machine: Machine, opponents: list[Machine]
+) -> dict[str, Any]:
+    """Execute a fixed selection. Failed matches never become completed results."""
+    selected = opponents[:10]
+    if any(not m.public_listing or m.id == machine.id for m in selected):
+        raise ValueError("Arena opponents must be other public strategies.")
+    if len({m.id for m in selected}) != len(selected):
+        raise ValueError("Arena visitor opponents must be distinct.")
+    matches = []
+    for opponent in selected:
+        with span(
+            "arena.opponent", opponent=opponent.name, opponent_id=str(opponent.id)
+        ):
+            result = play(sandbox, machine.blueprint, opponent.blueprint)
+        matches.append(
+            dict(
+                opponent=opponent.name,
+                opponent_id=str(opponent.id),
+                source_hash=opponent.source_hash,
+                preset=False,
+                **result,
+            )
+        )
+    fixed = presets()
+    for index in range(10 - len(selected)):
+        slot = index % len(fixed)
+        with span("arena.opponent", opponent=PRESETS[slot][0], preset=True):
+            result = play(sandbox, machine.blueprint, fixed[slot])
+        matches.append(
+            dict(
+                opponent=PRESETS[slot][0],
+                opponent_id=None,
+                preset=True,
+                source_hash=sha256(fixed[slot].code.encode()).hexdigest(),
+                **result,
+            )
+        )
+    return {
+        "rules_version": "pd-v1",
+        "suite_version": "arena-v1",
         "matches": matches,
         "total": sum(m["totals"][0] for m in matches),
         "combined": sum(m["combined"] for m in matches),

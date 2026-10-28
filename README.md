@@ -12,7 +12,7 @@ SQLite storage preserves match settings, completed rounds, attempts, and replay 
 The application runner executes ten rounds with a fake player and preserves partial results after failure.
 A bounded OpenAI adapter is available through Pydantic AI.
 Optional Logfire tracing and an operator CLI for reviewed links are available.
-Browser pages are not available yet.
+The browser provides arena entry, shared challenges, and saved replays.
 See [SPEC.md](SPEC.md) for the product contract.
 
 ## Install
@@ -189,7 +189,7 @@ Create operational and release documents when their implementation phase starts.
 ## Build a machine and challenge a friend
 
 The new browser experience generates Python once and runs each decision in a fresh Monty sandbox.
-Your machine plays three fixed opponents. Share its challenge link to invite another machine.
+Your machine faces ten recent public strategies. Presets fill empty slots. Share its challenge link to invite another machine.
 Stored machine versions and replay links remain available after restart.
 
 Set `OPENAI_API_KEY`, `LOGFIRE_TOKEN`, and `PYLEMMA_DAILY_GENERATIONS` in your shell.
@@ -243,7 +243,7 @@ Run its offline storage checks with `npm test --prefix deploy/cloudflare`.
 ## Learn the game
 
 The home page includes a short example that makes no model requests.
-Describe a strategy, check the generated rules, then confirm to start a tournament or challenge.
+Describe a strategy and enter the arena. Select the optional preview to inspect generated rules before playing.
 Revisions can compare against the previous replay. Shared links open directly on the result or invitation.
 
 Run the factual explanation checks offline:
@@ -252,17 +252,25 @@ Run the factual explanation checks offline:
 node --test tests/web/story.test.mjs
 ```
 
-## Global leaderboard
+## Recent arena results
 
-Open [the leaderboard](https://pylemma.aor.fyi/?leaderboard=1) to compare completed public tournaments.
-Open **All public games** for tournaments and challenges in completion order.
-Each entry links to its replay. Tournament entries also provide challenge links.
+Open **Recent results** to see completed public arena entries in completion order.
+Each strategy receives one arena result. Repeated entry returns that result without execution or another allowance reservation.
+Entrants can face different opponents. The page does not assign global ranks.
+Each entry links to its replay and challenge invitation.
 
-Select **List this player and its completed games publicly** when creating a player to include its games.
+Select **List my strategy and completed games publicly** to permit discovery and selection as an arena opponent.
 The choice is optional and unchecked by default. Existing unlisted games remain unlisted.
 Challenges appear publicly only when both players permit listing.
-Repeated tournaments count as separate games. Equal scores share a rank.
-These rankings use the fixed opponent suite and do not verify a player's human identity.
+The historical fixed-suite leaderboard remains available through `GET /api/leaderboard`.
+
+`POST /api/arena` accepts `machine_id` and an optional referral identifier.
+`GET /api/arena` returns recent public results with the existing pagination parameters.
+The browser creates a stored preview first, then starts execution automatically unless preview was requested.
+A failed execution keeps the stored player available for another attempt.
+
+Results include a short share card, an X composer link, and a challenge link to copy.
+Opening the composer does not publish a post. The visitor controls publication.
 
 ## Inspect game execution
 

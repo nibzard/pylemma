@@ -22,6 +22,8 @@ class MachineStore:
                     id TEXT PRIMARY KEY, data TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS machine_replays (
                     id TEXT PRIMARY KEY, data TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS arena_entries (
+                    machine_id TEXT PRIMARY KEY, replay_id TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS challenge_slots (
                     id INTEGER PRIMARY KEY, created TEXT DEFAULT CURRENT_TIMESTAMP);
                 CREATE TABLE IF NOT EXISTS generation_slots (
@@ -75,6 +77,11 @@ class MachineStore:
         identifier = uuid4()
         data = {"created_at": timestamp(), **data}
         with self.connect() as db:
+            if data.get("kind") == "arena":
+                db.execute(
+                    "INSERT INTO arena_entries VALUES (?, ?)",
+                    (data["machine"]["id"], str(identifier)),
+                )
             db.execute(
                 "INSERT INTO machine_replays VALUES (?, ?)",
                 (str(identifier), json.dumps(data)),
@@ -121,3 +128,48 @@ class MachineStore:
             if summary is not None:
                 entries.append(summary)
         return page(entries, ranked, offset, limit)
+
+    def arena_entry(self, identifier: UUID) -> dict[str, Any] | None:
+        """Return the completed entry without reserving or executing again."""
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT replay_id FROM arena_entries WHERE machine_id=?",
+                (str(identifier),),
+            ).fetchone()
+        if row is None:
+            return None
+        return {"replay_id": row[0], **self.read(UUID(row[0]))}
+
+    def arena_opponents(self, identifier: UUID) -> list[Machine]:
+        """Use latest completed public games, deduplicated by strategy version."""
+        with self.connect() as db:
+            records = db.execute("SELECT id, data FROM machine_replays").fetchall()
+        summaries = [
+            summary
+            for key, raw in records
+            if (summary := entry(key, json.loads(raw))) is not None
+        ]
+        ordered = page(summaries, False, 0, len(summaries))["entries"]
+        selected: dict[str, Machine] = {}
+        for summary in ordered:
+            for player in summary["players"]:
+                key = player["id"]
+                if key == str(identifier) or key in selected:
+                    continue
+                candidate = self.get(UUID(key))
+                if candidate.public_listing:
+                    selected[key] = candidate
+                if len(selected) == 10:
+                    return list(selected.values())
+        return list(selected.values())
+
+    def arena_games(self, *, offset: int = 0, limit: int = 20) -> dict[str, Any]:
+        with self.connect() as db:
+            records = db.execute("SELECT id, data FROM machine_replays").fetchall()
+        summaries = [
+            summary
+            for key, raw in records
+            if (summary := entry(key, json.loads(raw))) is not None
+            and summary["kind"] == "arena"
+        ]
+        return page(summaries, False, offset, limit)
