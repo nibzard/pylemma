@@ -31,7 +31,7 @@ Diagnostic failure must not change game results. Tests cover failure isolation a
 ## Checks run and results
 
 - `uv run --offline --locked pytest`: 243 tests passed.
-- `npm test --prefix deploy/cloudflare`: 14 tests passed.
+- `npm test --prefix deploy/cloudflare`: 16 tests passed.
 - `node --test tests/web/*.test.mjs`: eight tests passed.
 - `uv run --offline --locked ruff check .`: passed.
 - `uv run --offline --locked ruff format --check .`: 38 files unchanged.
@@ -60,4 +60,24 @@ Request references correlate events but do not authenticate visitors.
 
 ## Next implementation step
 
-Implement, test, document query examples, and deploy the instrumentation.
+Complete the live check after a cold restart and record the deployed version.
+
+## Deployment investigation
+
+The first live challenge succeeded on the previous container during image rollover.
+Subsequent cold starts returned 503 after approximately thirty seconds.
+Each failure followed a `container.idle_shutdown` event and produced no application span.
+Restoring the previous image reproduced the failure.
+The SDK increments its active request count only after container startup completes.
+The existing thirty-second idle callback can therefore destroy a container during startup.
+
+The Worker now defers idle shutdown while its existing busy flag is set.
+The flag covers startup and execution and resets in the existing `finally` block.
+A regression test checks that active work defers shutdown and completed work permits shutdown.
+Lifecycle records include start, stop, exit code, safe stop reason, and deployment version.
+Raw lifecycle errors are excluded from these records.
+
+A local container started under the hosted memory and CPU limits with synthetic credentials.
+Cloudflare denied the stored-log query with the available Wrangler credential.
+Worker tail records provided the shutdown evidence instead.
+No model generation was used for these checks.

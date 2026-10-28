@@ -20,7 +20,25 @@ export class Pylemma extends Container {
       PYLEMMA_STORE_TOKEN: env.STORE_TOKEN,
     };
   }
+  onStart() {
+    diagnosticLog({event:'container.started',version:this.env.VERSION_METADATA?.id || 'unknown'});
+  }
+  onStop({exitCode,reason}) {
+    diagnosticLog({event:'container.stopped',exit_code:Number.isInteger(exitCode) ? exitCode : null,
+      reason:['exit','signal'].includes(reason) ? reason : 'other',
+      version:this.env.VERSION_METADATA?.id || 'unknown'});
+  }
+  onError(error) {
+    diagnosticLog({event:'container.error',version:this.env.VERSION_METADATA?.id || 'unknown'});
+    throw error;
+  }
   async onActivityExpired() {
+    // The SDK counts in-flight requests only after startup finishes.
+    if (this.busy) {
+      diagnosticLog({event:'container.idle_deferred',version:this.env.VERSION_METADATA?.id || 'unknown'});
+      this.renewActivityTimeout();
+      return;
+    }
     diagnosticLog({event:"container.idle_shutdown",version:this.env.VERSION_METADATA?.id || "unknown"});
     await this.destroy();
   }

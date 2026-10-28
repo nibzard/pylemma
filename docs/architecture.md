@@ -308,3 +308,7 @@ Application middleware sets a context-local request reference. Separate game tra
 The remote store forwards the reference to internal storage calls.
 `telemetry.py` attaches the reference and deployment version to explicit spans.
 Sandbox and generation stages identify which boundary failed. Limits and permitted error subtypes provide further evidence.
+
+Container lifecycle records distinguish startup, stop, and idle shutdown.
+The Worker defers idle shutdown while a request waits for startup or execution.
+The existing busy flag protects this interval before the SDK starts counting active requests.

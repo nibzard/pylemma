@@ -178,3 +178,15 @@ Inspect its `limits`, `request_timeout_seconds`, `worker_timed_out`, and `worker
 `storage.request` distinguishes a storage failure from a game failure.
 A missing `error_type` on an older trace cannot establish the historical failure's cause.
 Diagnostic records deliberately omit raw exception text, request bodies, and credentials.
+
+Container lifecycle events include `container.started`, `container.stopped`, and `container.error`.
+The stop event records the exit code and a restricted reason.
+`container.idle_shutdown` identifies an idle stop; `container.idle_deferred` identifies active work that prevents shutdown.
+A waiting request protects startup because the SDK counts active requests only after startup completes.
+Compare lifecycle timestamps with request duration before attributing a startup failure to the application image.
+[Stored Cloudflare log queries](https://developers.cloudflare.com/api/resources/workers/subresources/observability/subresources/telemetry/methods/query/) require `Workers Observability Write` permission.
+Use Worker tail when stored-log access is unavailable. Never print authentication tokens.
+
+Wrangler success can precede container rollout completion.
+Check `wrangler containers info` for the expected image before testing a cold restart.
+Do not start another deployment while the previous container rollout remains pending.

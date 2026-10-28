@@ -81,3 +81,41 @@ test('failed diagnostic logging does not change the response',async(t)=>{
   const worker=new Pylemma({storage:{list:async()=>new Map()}},{});
   assert.equal((await worker.fetch(request('/api/arena'))).status,200);
 });
+
+test('container lifecycle records exit codes without raw errors',async(t)=>{
+  const logs=[];
+  t.mock.method(console,'log',line=>logs.push(JSON.parse(line)));
+  const worker=new Pylemma({storage:{}},{VERSION_METADATA:{id:'release-test'}});
+  worker.onStart();
+  worker.onStop({exitCode:137,reason:'exit'});
+  const error=new Error('PRIVATE');
+  assert.throws(()=>worker.onError(error),value=>value === error);
+  assert.equal(logs[0].event,'container.started');
+  assert.equal(logs[1].exit_code,137);
+  assert.equal(logs[2].event,'container.error');
+  assert.ok(logs.every(row=>row.version === 'release-test'));
+  assert.ok(!JSON.stringify(logs).includes('PRIVATE'));
+});
+
+test('idle expiry preserves a request waiting for container startup',async(t)=>{
+  t.mock.method(console,'log',()=>{});
+  const worker=new Pylemma({storage:{get:async key=>key === 'machine:'+id ? {id} : null}},{});
+  let release,start;
+  const started=new Promise(resolve=>{start=resolve;});
+  t.mock.method(Object.getPrototypeOf(Pylemma.prototype),'fetch',async()=>{
+    start();
+    return new Promise(resolve=>{release=()=>resolve(Response.json({forwarded:true}));});
+  });
+  let destroyed=0,renewed=0;
+  worker.destroy=async()=>{destroyed++;};
+  worker.renewActivityTimeout=()=>{renewed++;};
+  const pending=worker.fetch(request('/api/arena',{machine_id:id}));
+  await started;
+  await worker.onActivityExpired();
+  assert.equal(destroyed,0);
+  assert.equal(renewed,1);
+  release();
+  assert.equal((await pending).status,200);
+  await worker.onActivityExpired();
+  assert.equal(destroyed,1);
+});
