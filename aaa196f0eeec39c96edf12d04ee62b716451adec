@@ -1,0 +1,1 @@
+Keep the decision inspection action primary. Use a smaller public-example fallback and retain round guidance only when the link does not highlight the selected span. Eight browser logic tests, syntax checks, and local browser replay checks passed. No model calls.
