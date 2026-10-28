@@ -59,7 +59,7 @@ Images use recorded outcomes and do not claim to measure general ability.
 
 ## Next implementation step
 
-Implement, test, inspect the actual image, and deploy.
+Complete. Share images and replay metadata are deployed.
 
 ## References
 
@@ -67,3 +67,19 @@ Cloudflare documents native deflate compression in its
 [Web standards reference](https://developers.cloudflare.com/workers/runtime-apis/web-standards/).
 The former X large-image card documentation redirects to its general documentation overview.
 Validation therefore checks actual metadata and image responses without claiming X preview approval.
+
+
+## Deployment evidence
+
+Implementation commit: `a5e17eb`.
+Worker version: `fb314926-93e2-438d-9415-aadbc47691dc`.
+The container image remains unchanged and reports one healthy instance with no errors.
+
+The public replay returned its initial metadata and full application HTML to a Twitterbot user agent.
+The image returned HTTP 200, image/png, and one-day immutable cache headers.
+The live PNG is byte-identical to the inspected local image: 10,375 bytes, 1200 by 630 pixels.
+The image HEAD request also succeeded.
+The live browser loaded the image and verified the replay share URL and direct challenge link.
+At 390 pixels, the document has no horizontal overflow.
+No model generation, game execution, or result mutation ran during live verification.
+X's own preview display was not tested by posting.
