@@ -44,4 +44,12 @@ Account-required links still require visitors to find the selected round in the 
 
 ## Next implementation step
 
-Check the browser rendering and deploy the static asset.
+No further implementation is required for this copy change.
+
+## Deployment verification
+
+Worker version `6ca42416-c4e5-42b1-bc47-cd47511c997a` serves the updated asset.
+The live JavaScript matched the local file byte for byte.
+A browser opened the completed arena replay and confirmed one primary inspection action and the small public-example fallback.
+The account access statement appeared once. Round-finding guidance remained for the account-required link.
+Checks left tracked and unignored file fingerprints unchanged.
