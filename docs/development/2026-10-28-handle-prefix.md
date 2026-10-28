@@ -41,4 +41,10 @@ This formatting rule does not verify account ownership or existence.
 
 ## Next implementation step
 
-Deploy and verify the static assets.
+No further work is required for this change.
+
+## Deployment
+
+Worker version: e5810d93-3f9f-4ec5-8d2e-8b77dac34085.
+Both public JavaScript assets match the local files exactly.
+No model requests were made.
