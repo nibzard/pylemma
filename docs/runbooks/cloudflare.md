@@ -190,3 +190,11 @@ Use Worker tail when stored-log access is unavailable. Never print authenticatio
 Wrangler success can precede container rollout completion.
 Check `wrangler containers info` for the expected image before testing a cold restart.
 Do not start another deployment while the previous container rollout remains pending.
+
+`container.wait` records the request reference and sixty-second port deadline.
+A cold start can exceed the SDK default of twenty seconds at the hosted CPU limit.
+
+Container error categories distinguish `startup_exit`, `port_deadline`, and `other` without recording the SDK error text.
+
+The port deadline is an SDK polling budget. Connection attempts can extend the elapsed wait.
+A verified cold-start challenge took about seventy-six seconds on the lite instance.

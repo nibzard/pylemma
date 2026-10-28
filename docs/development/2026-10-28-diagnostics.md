@@ -60,7 +60,7 @@ Request references correlate events but do not authenticate visitors.
 
 ## Next implementation step
 
-Complete the live check after a cold restart and record the deployed version.
+Monitor real failures using request references and the documented queries.
 
 ## Deployment investigation
 
@@ -81,3 +81,26 @@ A local container started under the hosted memory and CPU limits with synthetic 
 Cloudflare denied the stored-log query with the available Wrangler credential.
 Worker tail records provided the shutdown evidence instead.
 No model generation was used for these checks.
+
+After idle protection, the SDK still returned 503 while waiting for the application port.
+The default port deadline is twenty seconds. Full local startup exceeded that interval at the hosted CPU limit.
+The Worker now requests a bounded sixty-second port deadline and propagates request cancellation.
+The regression test holds startup pending while invoking idle expiry through the actual request path.
+The `container.wait` event records the request reference and configured deadline.
+
+Container error records classify known startup exits and port deadlines without exposing raw SDK errors.
+
+## Live verification
+
+The new image completed a cold-start challenge with HTTP 201 in 75.93 seconds.
+Replay: `9ac7f50b-63a5-4325-8c27-ce655fc325d0`.
+Request reference: `7c54d435-e3e6-4b70-b1c1-dea6aecc6474`.
+Worker version: `a13044a5-dd27-4e29-9283-ee7555d7ba78`.
+The Logfire query returned 37 spans with this reference and deployment version.
+They included the application request, storage requests, challenge, match, rounds, and decisions.
+The application span recorded HTTP 201; the challenge stage was `complete`.
+
+The configured port deadline is an SDK polling budget, not a strict wall-clock limit.
+Connection attempts and execution add time. Cold startup remains slow on the lite instance.
+The earlier 422 sandbox failure ran on the old image and had no runtime subtype.
+Do not infer its cause from the successful check.

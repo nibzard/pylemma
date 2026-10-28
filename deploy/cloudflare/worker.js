@@ -29,7 +29,10 @@ export class Pylemma extends Container {
       version:this.env.VERSION_METADATA?.id || 'unknown'});
   }
   onError(error) {
-    diagnosticLog({event:'container.error',version:this.env.VERSION_METADATA?.id || 'unknown'});
+    const message=error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+    const failure=message.includes('crashed while checking for ports') ? 'startup_exit' :
+      message.startsWith('Failed to verify port ') ? 'port_deadline' : 'other';
+    diagnosticLog({event:'container.error',failure,version:this.env.VERSION_METADATA?.id || 'unknown'});
     throw error;
   }
   async onActivityExpired() {
@@ -181,6 +184,11 @@ export class Pylemma extends Container {
     }
     this.busy = true;
     try {
+      // The default port deadline is shorter than observed cold starts on lite.
+      diagnosticLog({event:'container.wait',request_id:request.headers.get('X-Request-ID'),
+        port_ready_timeout_ms:60000,version:this.env.VERSION_METADATA?.id || 'unknown'});
+      await this.startAndWaitForPorts({ports:this.defaultPort,
+        cancellationOptions:{abort:request.signal,portReadyTimeoutMS:60000}});
       const response = await super.fetch(request);
       if (!(response.headers.get('Content-Type') || '').includes('application/json')) {
         await response.body?.cancel();

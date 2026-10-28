@@ -7,6 +7,7 @@ let source = await readFile(new URL('../worker.js',import.meta.url),'utf8');
 source = source.replace("import { Container } from '@cloudflare/containers';",`
 class Container {
   constructor(ctx,env) { this.ctx=ctx; this.env=env; this.starts=0; }
+  async startAndWaitForPorts() {}
   async fetch() { this.starts++; return Response.json({forwarded:true}); }
 }`);
 for (const file of ['storage.mjs','trace-links.mjs']) {
@@ -93,6 +94,11 @@ test('container lifecycle records exit codes without raw errors',async(t)=>{
   assert.equal(logs[0].event,'container.started');
   assert.equal(logs[1].exit_code,137);
   assert.equal(logs[2].event,'container.error');
+  assert.equal(logs[2].failure,'other');
+  assert.throws(()=>worker.onError(new Error('Container crashed while checking for ports PRIVATE')));
+  assert.equal(logs[3].failure,'startup_exit');
+  assert.throws(()=>worker.onError(new Error('Failed to verify port 8080 PRIVATE')));
+  assert.equal(logs[4].failure,'port_deadline');
   assert.ok(logs.every(row=>row.version === 'release-test'));
   assert.ok(!JSON.stringify(logs).includes('PRIVATE'));
 });
@@ -102,9 +108,12 @@ test('idle expiry preserves a request waiting for container startup',async(t)=>{
   const worker=new Pylemma({storage:{get:async key=>key === 'machine:'+id ? {id} : null}},{});
   let release,start;
   const started=new Promise(resolve=>{start=resolve;});
-  t.mock.method(Object.getPrototypeOf(Pylemma.prototype),'fetch',async()=>{
+  t.mock.method(Object.getPrototypeOf(Pylemma.prototype),'startAndWaitForPorts',async options=>{
+    assert.equal(options.ports,8080);
+    assert.equal(options.cancellationOptions.portReadyTimeoutMS,60000);
+    assert.ok(options.cancellationOptions.abort instanceof AbortSignal);
     start();
-    return new Promise(resolve=>{release=()=>resolve(Response.json({forwarded:true}));});
+    return new Promise(resolve=>{release=resolve;});
   });
   let destroyed=0,renewed=0;
   worker.destroy=async()=>{destroyed++;};
