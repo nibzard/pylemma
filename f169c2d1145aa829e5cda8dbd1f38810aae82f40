@@ -1,0 +1,15 @@
+The user approves improvements for visitors unfamiliar with the game.
+Teach the choices before asking for rules, show a generated summary
+before play, and derive result explanations from completed outcomes.
+
+Preview mode preserves existing creation behavior by default. The new
+tournament endpoint executes a stored version and shares the challenge
+quota. A verified live tournament contains 94 spans and no generation
+span. One new challenger preview stays within the existing allowance.
+
+Validation: 215 Python tests and five JavaScript tests pass. Local and
+public browser checks cover confirmation, reloads, revision comparison,
+challenge invitations, stored results, and mobile rendering.
+
+Decision: docs/decisions/006-confirm-player-rules.md
+Evidence: docs/development/2026-10-28-first-visit.md
