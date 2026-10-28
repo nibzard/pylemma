@@ -1,0 +1,3 @@
+Verify live generation, remote Logfire export, reviewed public access,
+and browser appearance before deployment. Live checks need an explicit
+spending allowance. Hosting requires one worker and persistent storage.
