@@ -69,4 +69,42 @@ Cloudflare runtime replacement can still interrupt unfinished work.
 
 ## Next implementation step
 
-Complete offline checks and one bounded hosted generation and arena verification.
+Monitor completion, request latency, and inspection clicks using the documented events.
+
+
+## Hosted verification
+
+Worker version: fa5f0ee4-60bd-472b-9105-3a55f3cb0c90.
+Image digest: e2d948e96e6538a98642ed4f873e2a54937e067186222a3a07699ffb13898626.
+Container information confirmed the new image and healthy state before testing.
+The public build module matched the checked local asset.
+
+One unlisted preview generation used the existing USD 0.01 reservation.
+The client intentionally disconnected after 3.008 seconds.
+Polling observed starting, generating, saving, and complete stages.
+Completion became visible 12.125 seconds after submission.
+The short checking and finishing stages were not sampled by this one-second poll.
+A browser fixture separately verified checking-stage display.
+
+Repeating the same reference and input returned the same machine in 0.125 seconds.
+Changed input under that reference returned HTTP 409.
+The arena completed ten matches of twenty rounds in 5.872 seconds.
+Repeating the arena request returned the same replay in 0.135 seconds.
+
+Logfire recorded exactly one generation span for the build reference.
+It took 5.117 seconds and used 284 input tokens and 435 output tokens.
+The arena span recorded completed=true and took 4.570 seconds.
+Both application requests reported the deployed Worker version.
+
+The live browser displayed 509 points, points per round, a recorded cooperation recovery, and the adjacent Logfire action.
+It showed ten expandable groups of twenty rounds.
+The legacy replay retained arena-v1, 297 points, and ten matches of ten rounds.
+No existing player or replay was rewritten.
+
+References:
+- Build: b49e57c3-061f-4a90-9bc2-00f89325fe44.
+- Arena request: 776369cf-e35f-4fea-9332-f8ca827d5eaf.
+- New replay: eab8b4f1-e8fc-4565-a4f2-2b80ad933897.
+- Legacy replay: 390e52e3-2ed2-461f-82f3-9402af76545d.
+
+These timings are individual observations, not latency percentiles.
