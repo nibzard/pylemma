@@ -1,3 +1,4 @@
+import { STAGES, requestStage, requestError } from './progress.mjs';
 import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl } from './story.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -12,6 +13,40 @@ let activeMachine = null;
 let activeReplay = params.get('replay');
 let previousReplay = params.get('compare');
 let submitting = false;
+let progressTimer = null;
+let progressStarted = 0;
+let progressStage = null;
+function updateProgress(stage) {
+  if (stage === null) return;
+  progressStage = stage;
+  const box = $('#progress');
+  const wasHidden = box.hidden;
+  box.hidden = false;
+  if (wasHidden) box.scrollIntoView({block:'center'});
+  $('#progress-title').textContent = STAGES[stage];
+  $('#progress-steps').replaceChildren(...STAGES.map((title,index)=>{
+    const item = el('li', (index < stage ? '✓ ' : '') + title);
+    if (index === stage) item.setAttribute('aria-current','step');
+    return item;
+  }));
+  $('#progress-note').textContent = stage === 0 ?
+    'The server is generating your code and checking that it can run. This can take a little time.' :
+    stage === 1 ? 'Your saved rules are playing. Each match has ten rounds.' : 'The game is complete. Opening its saved result.';
+}
+function startProgress() {
+  progressStarted = Date.now();
+  $('#progress-time').textContent = '';
+  progressTimer = setInterval(()=>{
+    const seconds = Math.floor((Date.now()-progressStarted)/1000);
+    $('#progress-time').textContent = `${seconds} seconds elapsed`;
+    if (seconds >= 15 && progressStage !== 2) $('#progress-note').textContent =
+      'Still waiting for the server. Keep this tab open. You do not need to submit again.';
+  },1000);
+}
+function stopProgress() {
+  clearInterval(progressTimer); progressTimer = null; progressStage = null;
+  $('#progress').hidden = true;
+}
 
 function el(tag, text, className) {
   const node = document.createElement(tag);
@@ -39,15 +74,17 @@ function message(text, isError = false) {
   if (isError) status.scrollIntoView({block:'center'});
 }
 async function api(path, body) {
-  const response = await fetch(path, body ? {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
-  } : {});
+  if (submitting) updateProgress(requestStage(path,body ? 'POST' : 'GET'));
+  let response;
+  try {
+    response = await fetch(path, body ? {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+    } : {});
+  } catch { throw new Error(requestError(path,0)); }
   let data;
   try { data = await response.json(); }
-  catch { throw new Error('The game server could not respond. Try again shortly.'); }
-  if (!response.ok) {
-    throw new Error(typeof data.detail === 'string' ? data.detail : 'Check your rules and try again.');
-  }
+  catch { throw new Error(requestError(path,response.status)); }
+  if (!response.ok) throw new Error(requestError(path,response.status,data.detail));
   return data;
 }
 async function run(node, action, waiting) {
@@ -55,9 +92,11 @@ async function run(node, action, waiting) {
   submitting = true;
   node.disabled = true;
   message(waiting);
+  startProgress();
+  status.scrollIntoView({block:'center'});
   try { await action(); }
   catch (error) { message(error.message, true); }
-  finally { submitting = false; node.disabled = false; }
+  finally { stopProgress(); submitting = false; node.disabled = false; }
 }
 function showBuilder(machine) {
   $('#create').hidden = false;
@@ -427,7 +466,10 @@ $('#builder').onsubmit = event => {
         const result = target ? await api('/api/challenges',{left:data.machine.id,right:target.id,referral}) :
           await api('/api/arena',{machine_id:data.machine.id});
         await saveResult(result,target ? 'challenge' : 'arena');
-      } catch (error) { preview(data.machine); throw error; }
+      } catch (error) {
+        if (!activeReplay || !location.search.includes('replay=')) preview(data.machine);
+        throw error;
+      }
     }
   }, 'Building your player and checking its rules…');
 };

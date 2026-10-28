@@ -115,3 +115,9 @@ nav { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 .inspection { margin: 24px 0; padding: 20px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .inspect-button { display: inline-block; border: 1px solid var(--accent); padding: 11px 16px; min-height: 44px; text-decoration: none; font-weight: 650; }
 .inspect-button:hover { background: var(--tint); }
+.progress-panel { max-width: 760px; border-color: var(--accent); }
+.progress-panel progress { width: 100%; accent-color: var(--accent); height: 12px; }
+.progress-panel ol { display: flex; flex-wrap: wrap; gap: 12px 32px; padding-left: 24px; font-size: 13px; color: var(--muted); }
+.progress-panel [aria-current="step"] { color: var(--accent); font-weight: 700; }
+#progress-time { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .progress-panel progress { appearance: none; } }

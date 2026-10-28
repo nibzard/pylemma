@@ -68,8 +68,25 @@ def span(name: str, **attributes: Any) -> Iterator[Span]:
                 result = Span()
         try:
             yield result
-        except BaseException:
-            result.set(error_category="application_error")
+        except BaseException as error:
+            name = type(error).__name__
+            permitted = {
+                "TimeoutError",
+                "ValidationError",
+                "MontyCrashedError",
+                "MontyDisconnectError",
+                "MontyRuntimeError",
+                "MontySyntaxError",
+                "MontyConversionError",
+                "MontyTypingError",
+                "APIConnectionError",
+                "APITimeoutError",
+                "RateLimitError",
+            }
+            result.set(
+                error_category="application_error",
+                error_type=name if name in permitted else "UnexpectedError",
+            )
             raise
     finally:
         if result.handle is not None:

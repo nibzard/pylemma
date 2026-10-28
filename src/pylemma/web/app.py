@@ -158,6 +158,12 @@ def create_app(
                     )
                     operation.set(machine_id=str(result.id), replay_id=str(replay))
                     return {"machine": result, "replay_id": replay, "result": trial}
+                except TimeoutError:
+                    raise HTTPException(
+                        504,
+                        "Building your player took too long. "
+                        "Your description is still here. Try again shortly.",
+                    ) from None
                 except Exception:
                     raise HTTPException(
                         502,

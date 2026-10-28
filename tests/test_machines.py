@@ -321,3 +321,48 @@ def test_published_reference_scores(sandbox: Sandbox) -> None:
     )
     assert tournament(sandbox, cooperate)["total"] == 81
     assert tournament(sandbox, betray)["total"] == 78
+
+
+def test_generation_has_a_total_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+
+    import httpx
+
+    from pylemma import generator as module
+
+    async def slow(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(1)
+        return httpx.Response(500)
+
+    monkeypatch.setattr(module, "GENERATION_TIMEOUT", 0.01)
+
+    async def execute() -> None:
+        builder = module.Generator("synthetic", transport=httpx.MockTransport(slow))
+        try:
+            with pytest.raises(TimeoutError):
+                await builder.generate("Cooperate")
+        finally:
+            await builder.close()
+
+    asyncio.run(execute())
+
+
+def test_creation_timeout_has_a_useful_response(tmp_path: Path) -> None:
+    class SlowBuilder(FakeBuilder):
+        async def generate(self, strategy: str) -> Blueprint:
+            raise TimeoutError()
+
+    store = MachineStore(tmp_path / "deadline.sqlite3")
+    telemetry = logfire.configure(send_to_logfire=False, console=False, local=True)
+    with TestClient(create_app(store, SlowBuilder(), telemetry, 1)) as client:
+        response = client.post(
+            "/api/machines",
+            json={
+                "name": "Trust",
+                "strategy": "Cooperate",
+                "public_acknowledged": True,
+            },
+        )
+        assert response.status_code == 504
+        assert "took too long" in response.json()["detail"]
+        assert not store.reserve(1)

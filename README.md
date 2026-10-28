@@ -249,7 +249,7 @@ Revisions can compare against the previous replay. Shared links open directly on
 Run the factual explanation checks offline:
 
 ```sh
-node --test tests/web/story.test.mjs
+node --test tests/web/*.test.mjs
 ```
 
 ## Recent arena results

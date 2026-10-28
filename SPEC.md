@@ -1409,3 +1409,14 @@ Daily tournaments, accounts, accumulated points, and ranked matchmaking remain o
 
 If a game's trace is restricted or unavailable, offer the existing reviewed public example with an explicit separate-example label.
 Count example inspection clicks separately from inspection of the visitor's own game.
+
+## Runtime feedback
+
+Show an indeterminate activity indicator while a visitor request is pending.
+Show the request stage and elapsed time without invented round counts or percentages.
+Generation and validation share one stage because they share one server request.
+Show game execution and result retrieval as subsequent stages.
+Stop the indicator on success and failure. Preserve the strategy description and any stored player after failure.
+Translate browser connection failures into specific recovery instructions.
+Generation has a 45-second total deadline in addition to the provider transport timeout.
+Trace failures include only a permitted exception class, never raw exception text.

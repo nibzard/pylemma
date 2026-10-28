@@ -1,5 +1,6 @@
 """One bounded model request translates visitor rules into a machine blueprint."""
 
+import asyncio
 import json
 
 import httpx
@@ -8,6 +9,8 @@ from openai import AsyncOpenAI
 from pylemma.machines import Blueprint
 from pylemma.player.model import MODEL_ID
 from pylemma.telemetry import span
+
+GENERATION_TIMEOUT = 45.0
 
 PROMPT = """Generate Python code defining decide(observation).
 The observation has round (1..10), rounds (10), and history.
@@ -40,24 +43,25 @@ class Generator:
 
     async def generate(self, strategy: str) -> Blueprint:
         with span("machine.generate", strategy=strategy, model=MODEL_ID) as operation:
-            response = await self.client.chat.completions.create(
-                model=MODEL_ID,
-                max_completion_tokens=2400,
-                reasoning_effort="none",
-                service_tier="default",
-                messages=[
-                    {"role": "system", "content": PROMPT},
-                    {"role": "user", "content": strategy},
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "blueprint",
-                        "strict": True,
-                        "schema": Blueprint.model_json_schema(),
+            async with asyncio.timeout(GENERATION_TIMEOUT):
+                response = await self.client.chat.completions.create(
+                    model=MODEL_ID,
+                    max_completion_tokens=2400,
+                    reasoning_effort="none",
+                    service_tier="default",
+                    messages=[
+                        {"role": "system", "content": PROMPT},
+                        {"role": "user", "content": strategy},
+                    ],
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "blueprint",
+                            "strict": True,
+                            "schema": Blueprint.model_json_schema(),
+                        },
                     },
-                },
-            )
+                )
             result = Blueprint.model_validate_json(
                 response.choices[0].message.content or "{}"
             )

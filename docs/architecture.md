@@ -285,3 +285,12 @@ Share controls open a composer or copy an invitation. They never publish a post 
 
 A result without public trace access also offers the existing reviewed example, explicitly labelled as a separate tournament.
 Its click event is separate from inspection of the visitor's own game.
+
+## Pending requests and safe failures
+
+`web/static/progress.mjs` maps actual requests to stages and provides recovery messages.
+The browser renders an indeterminate indicator and elapsed time while submission is pending.
+Generation and validation remain one stage. No streaming protocol or estimated completion percentage is used.
+`generator.py` enforces a 45-second total deadline around the single provider request.
+`telemetry.py` records permitted failure classes and replaces other class names with `UnexpectedError`.
+It does not record raw exceptions or their messages.

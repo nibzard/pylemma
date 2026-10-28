@@ -361,3 +361,28 @@ def test_concurrent_matches_have_independent_roots(
     for replay in replays:
         assert all(a.trace_id == replay.trace_id for a in replay.attempts)
         assert all(r.trace_id == replay.trace_id for r in replay.rounds)
+
+
+@pytest.mark.parametrize(
+    "error, expected",
+    [
+        (TimeoutError("private detail"), "TimeoutError"),
+        (ValueError("private detail"), "UnexpectedError"),
+    ],
+)
+def test_safe_failure_type_without_raw_message(
+    telemetry: tuple[logfire.Logfire, InMemorySpanExporter],
+    error: Exception,
+    expected: str,
+) -> None:
+    client, exporter = telemetry
+    with pytest.raises(type(error)):
+        with match_context(client), span("safe.failure"):
+            raise error
+    client.force_flush()
+    recorded = next(
+        s for s in exporter.get_finished_spans() if s.name == "safe.failure"
+    )
+    assert (recorded.attributes or {})["error_type"] == expected
+    assert "private detail" not in str(recorded.attributes)
+    assert not recorded.events
