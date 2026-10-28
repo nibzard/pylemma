@@ -1,0 +1,1 @@
+Verified empty games, arena, and leaderboard indexes. All 25 formerly listed replays and one unlisted replay return 404. Saved player and build recovery remain readable. No model or game execution requests were made.
