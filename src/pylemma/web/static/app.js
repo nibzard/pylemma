@@ -186,14 +186,19 @@ function traceDetails(data, container, selected) {
     'Open the complete game trace. No Logfire account is needed.' :
     data.logfire_url ? 'A Logfire account with access to this project is required.' :
     'The Logfire link for this game is not available.', 'small'));
-  if (selected) box.append(el('p', `Find round ${selected.round} in the match with ${selected.opponent}.`, 'small'));
-  box.append(el('p', 'Inspect the information each player received, its returned choices, and execution timing.', 'small'));
+  const highlightsRound = selected?.spanId && data.logfire_access === 'public' &&
+    data.logfire_url && new URL(action.href).searchParams.get('spanId') === selected.spanId;
+  if (selected && data.logfire_url && !highlightsRound) {
+    box.append(el('p', `Find round ${selected.round} in the match with ${selected.opponent}.`, 'small'));
+  }
   if (data.logfire_access !== 'public') {
-    const example = el('a','Inspect a reviewed example in Logfire');
+    const example = el('a','Explore a public example');
     example.href = 'https://logfire-eu.pydantic.dev/public-trace/44e57f30-c25a-47fe-b85f-5db1d0604010?spanId=4ed36f7dff63d8fe';
     example.target = '_blank'; example.rel = 'noopener noreferrer';
     example.onclick = () => track('example_inspection_click');
-    box.append(example,el('p', 'This separate recorded tournament opens without a Logfire account.', 'small'));
+    const fallback = el('p','No project access? ', 'small');
+    fallback.append(example);
+    box.append(fallback);
   }
 
   container.append(box);
