@@ -132,3 +132,8 @@ Do not reuse another game's public trace URL or describe account-required access
 When a result lacks public access, the browser also links to the existing reviewed public tournament.
 This example is labelled separately. Its inspection clicks have a separate event name.
 Recheck its link before promotion. Remove or replace it if public access expires.
+
+A new Worker can become available before the previous container stops.
+During the arena deployment, the first arena request returned 404 from the container.
+The same request succeeded after the instance became inactive and restarted.
+Check the new execution endpoint after the idle restart before declaring deployment verified.
