@@ -127,6 +127,44 @@ def test_wire_contract_and_usage() -> None:
     assert "current_choice" not in user["observation"]
 
 
+@pytest.mark.parametrize(("input_tokens", "output_tokens"), [(0, 0), (0, 20), (100, 0)])
+def test_zero_usage_is_unknown(input_tokens: int, output_tokens: int) -> None:
+    body = completion().json()
+    body["usage"] = {
+        "prompt_tokens": input_tokens,
+        "completion_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+    }
+    transport = Transport([httpx.Response(200, json=body)])
+    result = run(transport)
+    assert result.decision.choice == "cooperate"
+    assert len(transport.requests) == 1
+    attempt = result.attempts[0]
+    assert attempt.input_tokens == (input_tokens or None)
+    assert attempt.output_tokens == (output_tokens or None)
+    assert attempt.estimated_cost_usd is None
+
+
+def test_zero_usage_retains_unknown_evaluation_cost() -> None:
+    body = completion().json()
+    body["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    transport = Transport([httpx.Response(200, json=body)] * 10)
+
+    async def execute() -> None:
+        player = ModelPlayer("offline", transport=httpx.MockTransport(transport))
+        try:
+            report = await evaluate(player, "Cooperate.", 1, MATCH_RESERVATION)
+            assert report["failures"] == 0
+            assert report["total_estimated_cost_usd"] is None
+            assert report["unknown_cost_attempts"] == 10
+            assert report["reserved_ceiling_usd"] == str(MATCH_RESERVATION)
+            assert len(transport.requests) == 10
+        finally:
+            await player.close()
+
+    asyncio.run(execute())
+
+
 @pytest.mark.parametrize(
     "content",
     [

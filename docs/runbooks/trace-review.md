@@ -79,7 +79,7 @@ uv run --offline --locked python3 -m pylemma.cli --database "$DATABASE" \
 
 `--reviewed` confirms the full-trace and signed-out review.
 The command requires a completed match with a trace identifier.
-Allowed hosts are exactly `logfire.pydantic.dev` and `logfire-us.pydantic.dev`.
+Allowed hosts are exactly `logfire.pydantic.dev`, `logfire-us.pydantic.dev`, and `logfire-eu.pydantic.dev`.
 Only HTTPS links without credentials, ports, parameters, fragments, escapes, or whitespace are accepted.
 The command does not fetch the URL or prove that it identifies the stored trace.
 The operator must compare the identifiers and complete contents before recording the link.

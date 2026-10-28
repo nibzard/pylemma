@@ -146,6 +146,34 @@ def test_trace_hierarchy_references_and_safe_attributes(
     assert store.read(replay.match.settings.match_id) == replay
 
 
+def test_zero_usage_stays_unknown_in_storage_and_trace(
+    store: MatchStore,
+    telemetry: tuple[logfire.Logfire, InMemorySpanExporter],
+) -> None:
+    client, exporter = telemetry
+    body = completion().json()
+    body["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    replay = execute(store, client, Transport([httpx.Response(200, json=body)] * 10))
+    assert replay.match.status == "completed"
+    for attempt in replay.attempts:
+        assert attempt.input_tokens is None
+        assert attempt.output_tokens is None
+        assert attempt.estimated_cost_usd is None
+    for record in replay.rounds:
+        assert record.input_tokens is None
+        assert record.output_tokens is None
+        assert record.estimated_cost_usd is None
+    assert store.read(replay.match.settings.match_id) == replay
+    requests = [s for s in finished(exporter) if s.name == "model request"]
+    assert len(requests) == 10
+    for request in requests:
+        attributes = dict(request.attributes or {})
+        # The SDK serializes null structured attributes as JSON strings.
+        assert json.loads(str(attributes["input_tokens"])) is None
+        assert json.loads(str(attributes["output_tokens"])) is None
+        assert json.loads(str(attributes["estimated_cost_usd"])) is None
+
+
 class FailingExporter(InMemorySpanExporter):
     def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
         raise RuntimeError("Exporter is unavailable.")
@@ -230,6 +258,8 @@ def test_span_api_failure_does_not_swallow_application_errors(
         "https://logfire.pydantic.dev/public/example\n",
         "https://logfire.pydantic.dev\\@evil.test/x",
         "https://logfire.pydantic.dev/public/example#javascript:alert(1)",
+        "https://logfire-eu.pydantic.dev.evil.test/public/example",
+        "https://logfire-eu.pydantic.dev/redirect?url=https://evil.test",
     ],
 )
 def test_reject_unsafe_links(url: str) -> None:
@@ -237,7 +267,12 @@ def test_reject_unsafe_links(url: str) -> None:
         validate_public_url(url)
 
 
+@pytest.mark.parametrize(
+    "host",
+    ["logfire.pydantic.dev", "logfire-us.pydantic.dev", "logfire-eu.pydantic.dev"],
+)
 def test_reviewed_cli_and_replay_independence(
+    host: str,
     store: MatchStore,
     telemetry: tuple[logfire.Logfire, InMemorySpanExporter],
 ) -> None:
@@ -245,7 +280,7 @@ def test_reviewed_cli_and_replay_independence(
     replay = execute(store, client, Transport([completion()] * 10))
     match_id = str(replay.match.settings.match_id)
     base = ["--database", str(store.path)]
-    url = "https://logfire.pydantic.dev/public/example"
+    url = f"https://{host}/public/example"
     with pytest.raises(SystemExit):
         main([*base, "record-link", match_id, url])
     main([*base, "record-link", match_id, url, "--reviewed"])

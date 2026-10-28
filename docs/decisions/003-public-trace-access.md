@@ -3,7 +3,8 @@
 ## Status and date
 
 Accepted for local preparation on 2026-10-27.
-Account settings, live trace contents, and signed-out access remain unverified.
+One real match and its complete exported attributes are reviewed in the [live record](../development/2026-10-27-live-logfire.md).
+Account settings and signed-out access remain unverified.
 T007 through T009 own those development round 2 checks.
 
 ## Problem
@@ -68,7 +69,8 @@ Matches without reviewed links have no public trace reference.
 Exports can fail without changing stored scores or completed rounds.
 Operators must review SDK resource metadata as well as application attributes.
 Expired links need removal or replacement. Replays remain readable after either operation.
-The explicit host allowlist can reject new regional hosts until reviewed and added.
+The explicit host allowlist accepts the verified EU host `logfire-eu.pydantic.dev` alongside the existing hosts.
+Other regional hosts require verification before addition.
 Links with parameters are rejected; verify a complete-trace link without parameters through the supported interface.
 Do not rewrite an unfamiliar link or guess its path.
 

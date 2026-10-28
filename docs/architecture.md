@@ -122,6 +122,8 @@ The strategy is a separate argument. The opponent never receives it.
 `PlayerError` carries a safe error category. Invalid results fail validation at the runner boundary.
 Fake attempts record empty execution parameters and unknown usage and cost.
 Real requests include metadata for retries and failed request usage.
+The model adapter accepts positive token counts and treats zero counts as unavailable for nonempty requests and decisions.
+Each usable counter remains available independently; an unavailable counter keeps the estimated cost unknown.
 
 `application/runner.py` starts an existing pending match and coordinates ten rounds.
 It fixes the player observation and opponent history before calling either participant.

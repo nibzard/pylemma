@@ -226,11 +226,17 @@ class ModelPlayer:
                 known = response is not None and bool(
                     (response.provider_details or {}).get("usage_supplied")
                 )
+                # Nonempty prompts and decisions cannot establish zero-token charges.
+                # Preserve each usable counter; unknown usage keeps cost unknown.
                 input_tokens = (
-                    response.usage.input_tokens if response and known else None
+                    response.usage.input_tokens
+                    if response and known and response.usage.input_tokens > 0
+                    else None
                 )
                 output_tokens = (
-                    response.usage.output_tokens if response and known else None
+                    response.usage.output_tokens
+                    if response and known and response.usage.output_tokens > 0
+                    else None
                 )
                 attempts.append(
                     AttemptMetadata(

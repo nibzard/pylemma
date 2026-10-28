@@ -2,7 +2,9 @@
 
 from urllib.parse import urlsplit
 
-LOGFIRE_HOSTS = frozenset({"logfire.pydantic.dev", "logfire-us.pydantic.dev"})
+LOGFIRE_HOSTS = frozenset(
+    {"logfire.pydantic.dev", "logfire-us.pydantic.dev", "logfire-eu.pydantic.dev"}
+)
 
 
 def validate_public_url(value: str) -> str:

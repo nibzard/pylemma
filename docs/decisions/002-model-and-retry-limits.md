@@ -48,6 +48,9 @@ Use the cache-write rate for all input tokens as a conservative estimate.
 Do not apply cached-input discounts.
 Record this estimation basis with each attempt.
 Missing usage produces unknown cost, including failed requests and timeouts.
+For nonempty prompts and responses, zero token counters are unavailable usage.
+Preserve each positive counter independently and leave cost unknown when either counter is unavailable.
+This prevents provider placeholders or missing usage mappings from implying free execution.
 
 Limit serialized prompt and schema input to 32,000 bytes.
 Reserve 65,536 input tokens per request, including space for provider framing.
@@ -86,5 +89,7 @@ Sources checked on 2026-10-27:
 - [Pydantic AI OpenAI integration](https://ai.pydantic.dev/models/openai/).
 
 Offline evidence appears in the [development record](../development/2026-10-27-bounded-model.md).
-Account access, latency, and live response quality remain unverified until T007 and T008.
+The [live record](../development/2026-10-27-live-logfire.md) verifies account access and one complete model match.
+The [usage correction](../development/2026-10-27-usage-accounting.md) prevents anomalous zero counters from establishing known cost.
+Actual billing remains unverified; no additional paid match ran for that correction.
 Reconsider this decision if access fails, prices change, a dated snapshot appears, or the response limit prevents valid decisions.

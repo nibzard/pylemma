@@ -105,9 +105,11 @@ The command reserves USD 0.16640 per match at the recorded rates.
 It rejects insufficient allowances before any model request.
 Repetitions range from one to ten and share the explicit allowance.
 Unknown costs remain null; the report retains the conservative reservation.
+Zero token counts for nonempty model requests are unavailable usage, so their estimated cost remains unknown.
 Recheck published prices before authorizing live execution.
 Hosted daily budgets and persistent reservations remain in T013.
-The first real match and reviewed trace remain in T008.
+One real match and remote trace are verified in the [live verification record](docs/development/2026-10-27-live-logfire.md).
+Actual billing and publication review remain open.
 
 ## Match tracing and reviewed links
 
