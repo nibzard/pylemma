@@ -19,7 +19,7 @@
   "containers": [
     {
       "class_name": "Pylemma",
-      "image": "registry.cloudflare.com/24f97aae6afe0315dac069a5c08fe795/pylemma@sha256:90b722d895ec7e1f15b50b90d0ec6aac24383809563a5f703b12c15249f9144f",
+      "image": "registry.cloudflare.com/24f97aae6afe0315dac069a5c08fe795/pylemma@sha256:94037f95d430ddd1fd6625fb1a37d6b1cadd9d90ce6b4f41e289b14616e4719c",
       "instance_type": "lite",
       "max_instances": 1
     }

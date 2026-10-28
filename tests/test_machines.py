@@ -198,29 +198,28 @@ def test_generation_http_contract_and_trace(sandbox: Sandbox) -> None:
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(json.loads(request.content))
+        chunk = {
+            "id": "example",
+            "created": 1,
+            "object": "chat.completion.chunk",
+            "model": "test",
+            "choices": [
+                {
+                    "index": 0,
+                    "finish_reason": "stop",
+                    "delta": {"content": presets()[0].model_dump_json()},
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 100,
+                "completion_tokens": 50,
+                "total_tokens": 150,
+            },
+        }
         return httpx.Response(
             200,
-            json={
-                "id": "example",
-                "created": 1,
-                "object": "chat.completion",
-                "model": "test",
-                "choices": [
-                    {
-                        "index": 0,
-                        "finish_reason": "stop",
-                        "message": {
-                            "role": "assistant",
-                            "content": presets()[0].model_dump_json(),
-                        },
-                    }
-                ],
-                "usage": {
-                    "prompt_tokens": 100,
-                    "completion_tokens": 50,
-                    "total_tokens": 150,
-                },
-            },
+            headers={"Content-Type": "text/event-stream"},
+            content=f"data: {json.dumps(chunk)}\n\ndata: [DONE]\n\n",
         )
 
     exporter = InMemorySpanExporter()
@@ -240,6 +239,8 @@ def test_generation_http_contract_and_trace(sandbox: Sandbox) -> None:
     asyncio.run(execute())
     assert len(requests) == 1
     assert requests[0]["max_completion_tokens"] == 2400
+    assert requests[0]["stream"] is True
+    assert requests[0]["stream_options"] == {"include_usage": True}
     assert requests[0]["messages"][1]["content"] == "Always cooperate"
     telemetry.force_flush()
     spans = exporter.get_finished_spans()

@@ -312,3 +312,8 @@ Sandbox and generation stages identify which boundary failed. Limits and permitt
 Container lifecycle records distinguish startup, stop, and idle shutdown.
 The Worker defers idle shutdown while a request waits for startup or execution.
 The existing busy flag protects this interval before the SDK starts counting active requests.
+
+The generator consumes provider streaming internally to measure first content and complete response timing.
+A context-local timing record connects HTTPX hooks to the existing generation span while retaining the HTTP connection pool.
+Only approved event names become numeric timing marks. Transport payloads are ignored.
+The browser receives one completed blueprint after normal stream completion and schema validation.

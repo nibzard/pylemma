@@ -1437,3 +1437,8 @@ A crashed sandbox can record its timeout flag and numeric exit status when avail
 Storage spans record the operation and status without record bodies or credentials.
 No diagnostic event contains a raw URL, arbitrary request header, exception message, or stack trace.
 Existing permitted game trace attributes retain their existing full publication review requirements.
+
+Generation reads the provider stream internally and validates the complete blueprint before returning it.
+A normal completion marker is required. Interrupted output never becomes a saved player.
+Generation timings record client dispatch, connection, response headers, first content, stream completion, and validation in elapsed milliseconds.
+Numeric timings omit transport payloads. Missing usage remains unknown when the final usage chunk is unavailable.

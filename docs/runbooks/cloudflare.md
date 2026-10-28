@@ -203,3 +203,25 @@ Sandbox decisions have a 0.5-second feed budget and a two-second host request de
 The previous 0.05-second budget caused an intermittent timeout for a bounded history-based policy on the lite instance.
 An execution timeout does not establish an infinite loop. Compare the source and observation before assigning the cause.
 Arena spans include the entrant identifier from the start, including failed entries.
+
+## Measure generation latency
+
+Inspect `machine.generate` attributes `timing_ms`, `process_cpu_ms`, and `usage` for the request reference.
+Each timing mark is milliseconds since generation started, except `process_cpu_before_dispatch`, which records process CPU time.
+
+- `request_dispatched`: local preparation has finished and HTTPX starts the request.
+- `tcp_start` to `tcp_complete`: connection setup, including name resolution when needed.
+- `tls_start` to `tls_complete`: Transport Layer Security handshake.
+- `request_sent` to `response_headers`: response-header wait after sending the request body.
+- `first_chunk`: the first decoded provider event, which can contain no text.
+- `first_content`: the first nonempty content chunk received by the application.
+- `stream_complete`, `validated`, and `total`: response completion, schema validation, and final recorded time.
+
+Subtract elapsed marks to obtain intervals. Missing connection marks can mean a reused connection or an unsupported transport event.
+These are client observations, not provider queue measurements. CPU time includes other threads in the same process.
+A streamed call cannot reconstruct an earlier non-streamed request.
+The 45-second total deadline and disabled retries still apply.
+
+The implementation uses [provider streaming](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)
+and [HTTPX trace events](https://www.python-httpx.org/advanced/extensions/).
+Raw HTTP metadata is never added to the timing record.
