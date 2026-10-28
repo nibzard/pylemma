@@ -32,7 +32,8 @@ JavaScript syntax and git diff checks passed. File fingerprints were unchanged b
 
 ## Failures and verified corrections
 
-None.
+A browser assertion had an escaped regular-expression syntax error.
+Literal text checks corrected the verification script and passed.
 
 ## Known limits
 
@@ -41,4 +42,14 @@ It is not a promise about games against other opponents.
 
 ## Next implementation step
 
-Deploy and verify the public presentation.
+No further work is required for this presentation change.
+
+
+## Live verification
+
+Worker version: 65f3a9e6-eabf-494c-a7f1-43ed4baf8a21.
+Both deployed JavaScript assets match the checked local files.
+The live results page shows points per round and the 2.51 always-cooperate reference.
+The rendered page contains no out-of-five score labels.
+The container image and stored results are unchanged.
+No model or game execution requests were made.
