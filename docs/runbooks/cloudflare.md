@@ -225,3 +225,8 @@ The 45-second total deadline and disabled retries still apply.
 The implementation uses [provider streaming](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)
 and [HTTPX trace events](https://www.python-httpx.org/advanced/extensions/).
 Raw HTTP metadata is never added to the timing record.
+
+The generator resolves lazy SDK resources and the fixed response schema during application startup.
+This work makes no network request and consumes no generation allowance.
+Compare `request_dispatched` timings after deployment; cold-start time can increase because preparation now precedes application readiness.
+The idle timeout and container size remain unchanged.

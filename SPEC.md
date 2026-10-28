@@ -1310,7 +1310,7 @@ Supply a default name and complete example strategies.
 The browser creates a validated machine with `preview: true` on `POST /api/machines`.
 This optional field defaults to false to preserve existing clients.
 Preview creation stores the machine but creates no tournament or replay.
-The visitor checks its generated summary before starting play.
+The optional review action lets the visitor check its generated summary before starting play.
 `POST /api/tournaments` accepts `machine_id` and runs that stored version without generating code again.
 Tournament execution shares the challenge execution quota. It does not consume a generation reservation.
 A challenge invitation retains its target through preview, reload, and confirmation.
@@ -1336,7 +1336,7 @@ Automated and browser checks do not replace comprehension testing with new visit
 The current phase adds public rankings and public game history.
 This section supersedes the original exclusion of a global score table.
 A new immutable machine field, `public_listing`, defaults to false.
-The creation request accepts the same optional field. The browser requires a separate listing choice, unchecked by default.
+The creation request accepts the same optional field. The browser combines listing consent with its required public-entry checkbox.
 The existing public-record acknowledgement remains required for creation.
 Missing listing fields preserve existing unlisted behavior. Do not publish old records through the public directory.
 A completed challenge enters public history only when both players permit listing.
@@ -1383,7 +1383,9 @@ This accepted contract supersedes the fixed tournament as the default browser ex
 Existing tournament endpoints and historical replays remain supported.
 
 A visitor enters a strategy through one form. Code inspection is optional.
-The public-record acknowledgement remains required. Public discovery consent remains optional.
+The browser uses one required checkbox for public records, public discovery, and arena opponent eligibility.
+The checkbox starts unchecked. Existing unlisted versions retain their stored visibility.
+An optional review button opens generated rules before execution.
 Each immutable strategy receives at most one completed arena result.
 Repeated entry returns that saved result without execution or another allowance reservation.
 
@@ -1442,3 +1444,5 @@ Generation reads the provider stream internally and validates the complete bluep
 A normal completion marker is required. Interrupted output never becomes a saved player.
 Generation timings record client dispatch, connection, response headers, first content, stream completion, and validation in elapsed milliseconds.
 Numeric timings omit transport payloads. Missing usage remains unknown when the final usage chunk is unavailable.
+
+Hosted startup resolves lazy generation client resources and prepares the fixed response schema without contacting the provider.

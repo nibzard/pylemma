@@ -97,6 +97,11 @@ class Generator:
             ),
         )
 
+        # Resolve lazy SDK resources before the application accepts requests.
+        # This imports client types locally; it does not contact the provider.
+        self._completions = self.client.chat.completions
+        self._blueprint_schema = Blueprint.model_json_schema()
+
     async def close(self) -> None:
         await self.client.close()
 
@@ -115,7 +120,7 @@ class Generator:
             finish_reason = None
             try:
                 async with asyncio.timeout(GENERATION_TIMEOUT):
-                    stream = await self.client.chat.completions.create(
+                    stream = await self._completions.create(
                         model=MODEL_ID,
                         stream=True,
                         stream_options={"include_usage": True},
@@ -131,7 +136,7 @@ class Generator:
                             "json_schema": {
                                 "name": "blueprint",
                                 "strict": True,
-                                "schema": Blueprint.model_json_schema(),
+                                "schema": self._blueprint_schema,
                             },
                         },
                     )

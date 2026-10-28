@@ -229,6 +229,7 @@ def test_generation_http_contract_and_trace(sandbox: Sandbox) -> None:
 
     async def execute() -> None:
         generator = Generator("synthetic-key", transport=httpx.MockTransport(respond))
+        assert not requests  # Preparing client resources must not call the provider.
         try:
             with match_context(telemetry):
                 blueprint = await generator.generate("Always cooperate")

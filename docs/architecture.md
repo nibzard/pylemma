@@ -317,3 +317,7 @@ The generator consumes provider streaming internally to measure first content an
 A context-local timing record connects HTTPX hooks to the existing generation span while retaining the HTTP connection pool.
 Only approved event names become numeric timing marks. Transport payloads are ignored.
 The browser receives one completed blueprint after normal stream completion and schema validation.
+
+The hosted generator constructor resolves the SDK chat completion resource and caches the fixed blueprint schema.
+This local preparation completes before the application serves requests and makes no provider call.
+The browser uses one explicit public-entry checkbox and a separate optional review action.

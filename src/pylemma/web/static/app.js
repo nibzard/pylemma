@@ -111,7 +111,7 @@ function showBuilder(machine) {
   if (machine) {
     $('#name').value = machine.name;
     $('#strategy').value = machine.strategy;
-    $('#listed').checked = machine.public_listing === true;
+    $('#ack').checked = false;
     previousReplay = activeReplay;
   }
   $('#builder [type=submit]').textContent = target ? 'Challenge this strategy' : 'Enter the arena';
@@ -458,18 +458,19 @@ for (const example of document.querySelectorAll('[data-example]')) {
 }
 $('#builder').onsubmit = event => {
   event.preventDefault();
-  const submit = event.target.querySelector('[type=submit]');
+  const submit = event.submitter || event.target.querySelector('[type=submit]');
+  const reviewFirst = submit.dataset.preview === 'true';
   void run(submit, async () => {
     const data = await api('/api/machines', {
       name:$('#name').value, strategy:$('#strategy').value,
-      public_acknowledged:$('#ack').checked, public_listing:$('#listed').checked, preview:true,
+      public_acknowledged:$('#ack').checked, public_listing:$('#ack').checked, preview:true,
     });
     const values = {player:data.machine.id};
     if (target) values.challenge = target.id;
     if (referral) values.ref = 'share';
     if (previousReplay) values.compare = previousReplay;
     history.replaceState(null, '', '/?' + new URLSearchParams(values));
-    if ($('#preview-first').checked) {
+    if (reviewFirst) {
       preview(data.machine);
     } else {
       activeMachine = data.machine;

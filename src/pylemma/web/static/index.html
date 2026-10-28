@@ -71,10 +71,12 @@
         </div>
         <label for="name">Player name <span class="small">You can change this.</span></label>
         <input id="name" maxlength="60" required value="The second chance" autocomplete="off">
-        <label class="notice"><input id="ack" type="checkbox" required><span>Anyone with a link can see my player's name, rules, generated code, and results. I will not enter private information.</span></label>
-        <label class="notice"><input id="listed" type="checkbox"><span>List my strategy and completed games publicly. Let other arena players face this strategy.</span></label>
-        <label class="notice"><input id="preview-first" type="checkbox"><span>Let me inspect the generated rules before playing.</span></label>
-        <button class="primary" type="submit">Enter the arena <span aria-hidden="true">→</span></button>
+        <label class="notice"><input id="ack" type="checkbox" required><span>Make my player's name, rules, code, and results public. Other arena players can face this strategy.</span></label>
+        <p class="small">Do not enter private information.</p>
+        <div class="actions">
+          <button class="primary" type="submit">Enter the arena <span aria-hidden="true">→</span></button>
+          <button type="submit" data-preview="true">Review rules first</button>
+        </div>
         <p class="small">No account or coding needed. AI builds your player once. Every round runs its saved rules.</p>
       </form>
     </section>
