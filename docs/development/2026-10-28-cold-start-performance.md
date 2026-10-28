@@ -64,4 +64,36 @@ Local CPU limits approximate available compute but do not reproduce Cloudflare s
 
 ## Next implementation step
 
-Measure the revised image and verify a hosted challenge without a model request.
+Monitor real requests for latency variation and remaining cold-start failures.
+
+
+## Hosted verification
+
+Worker version: 00a97618-234a-4e22-bbab-e51f366a9e93.
+Image digest: 1b24ccda7d43540a91bef56685ed63ca219b595281e0f05733290ab0e00642d0.
+Container information confirmed the new image, 0.25 CPU, and healthy status before testing.
+All requests below returned HTTP 201.
+
+| Request | External seconds | Application seconds |
+| --- | ---: | ---: |
+| First challenge after rollout | 9.765489 | 0.848402 |
+| Warm challenge | 1.747942 | 0.893969 |
+| Warm player preview build | 4.016603 | 3.370257 |
+| Arena for that player | 5.382388 | Not queried |
+
+The baseline challenge took 83.157316 seconds.
+The first request after rollout took 88 percent less time.
+This comparison includes startup, proxying, transport, and execution; it is not a pure startup measurement.
+Each number is one observation, not a percentile or guarantee.
+
+The generation span took 2.984048 seconds, with dispatch after 24.162 milliseconds.
+Its first content arrived after 1.539 seconds.
+Logfire confirmed the deployed version for the challenge and generation requests.
+One unlisted generation used the existing USD 0.01 reservation.
+The challenge and arena checks made no model requests.
+
+References:
+- First challenge: c9d75429-a705-461e-b4b1-35ad371e23ec.
+- Warm challenge: 97b69d25-04bb-4f34-b279-89e72e842b22.
+- Player build: 6d366f16-0d83-49b5-aaba-a5fc6a27a622.
+- Arena: 5e9d37a9-7fd7-4fb2-9f9b-5f70bc7a09eb.
