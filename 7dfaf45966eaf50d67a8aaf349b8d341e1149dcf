@@ -1,0 +1,1 @@
+Implement the agreed simple arena and Logfire funnel. See docs/decisions/009-simple-arena.md and docs/development/2026-10-28-arena.md for scope, validation, and limits. Scores use different opponents and therefore carry no global rank.
