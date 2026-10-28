@@ -45,3 +45,39 @@ test('new arena entry forwards only after validating the stored player',async()=
   assert.equal(response.status,200);
   assert.equal(worker.starts,1);
 });
+
+test('diagnostics correlate safe routes and reject extra browser fields',async(t)=>{
+  const logs=[];
+  t.mock.method(console,'log',line=>logs.push(JSON.parse(line)));
+  const worker=new Pylemma({storage:{get:async()=>null,list:async()=>new Map()}},{VERSION_METADATA:{id:'release-test'}});
+  const req=new Request('https://example.test/api/replays/'+id+'?secret=PRIVATE',{
+    headers:{'X-Request-ID':id,'Authorization':'PRIVATE'}});
+  const response=await worker.fetch(req);
+  assert.equal(response.headers.get('X-Request-ID'),id);
+  assert.equal(logs[0].request_id,id);
+  assert.equal(logs[0].route,'/api/replays/{id}');
+  assert.equal(logs[0].status,404);
+  assert.equal(logs[0].version,'release-test');
+  assert.ok(!JSON.stringify(logs).includes('PRIVATE'));
+  const report={request_id:id,operation:'create',failure:'network',status:0};
+  assert.equal((await worker.fetch(request('/api/diagnostics',report))).status,204);
+  assert.ok(logs.some(row=>row.event === 'browser.failure' && row.failed_request_id === id && row.untrusted));
+  assert.equal((await worker.fetch(request('/api/diagnostics',{...report,message:'PRIVATE'}))).status,422);
+  assert.equal(worker.starts,0);
+});
+
+test('quota diagnostics distinguish rejection without starting a container',async(t)=>{
+  const logs=[];
+  t.mock.method(console,'log',line=>logs.push(JSON.parse(line)));
+  const worker=new Pylemma({storage:{get:async key=>key === 'lifetime:challenge' ? 1600 : null}},{});
+  const response=await worker.fetch(request('/api/challenges',{left:id,right:replay}));
+  assert.equal(response.status,429);
+  assert.equal(logs[0].outcome,'lifetime_quota');
+  assert.equal(worker.starts,0);
+});
+
+test('failed diagnostic logging does not change the response',async(t)=>{
+  t.mock.method(console,'log',()=>{throw new Error('log unavailable');});
+  const worker=new Pylemma({storage:{list:async()=>new Map()}},{});
+  assert.equal((await worker.fetch(request('/api/arena'))).status,200);
+});

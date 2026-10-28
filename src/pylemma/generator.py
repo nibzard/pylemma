@@ -43,6 +43,12 @@ class Generator:
 
     async def generate(self, strategy: str) -> Blueprint:
         with span("machine.generate", strategy=strategy, model=MODEL_ID) as operation:
+            operation.set(
+                stage="provider",
+                total_timeout_seconds=GENERATION_TIMEOUT,
+                transport_timeout_seconds=20,
+                max_output_tokens=2400,
+            )
             async with asyncio.timeout(GENERATION_TIMEOUT):
                 response = await self.client.chat.completions.create(
                     model=MODEL_ID,
@@ -62,10 +68,12 @@ class Generator:
                         },
                     },
                 )
+            operation.set(stage="validate_blueprint")
             result = Blueprint.model_validate_json(
                 response.choices[0].message.content or "{}"
             )
             operation.set(
+                stage="complete",
                 blueprint=result.model_dump(),
                 usage=json.loads(response.usage.model_dump_json())
                 if response.usage

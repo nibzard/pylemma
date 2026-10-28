@@ -17,3 +17,9 @@ test('network failures explain how to recover without exposing browser errors',(
   assert.equal(requestError('/api/machines',429,'The quota is exhausted.'),'The quota is exhausted.');
   assert.match(requestError('/api/replays/id',404),/Check the link/);
 });
+
+test('browser reports omit URLs, descriptions, and raw exception text',async()=>{
+  const {failureReport} = await import('../../src/pylemma/web/static/progress.mjs');
+  assert.deepEqual(failureReport('/api/replays/private-id?secret=private','00000000-0000-0000-0000-000000000001','network',0),{
+    request_id:'00000000-0000-0000-0000-000000000001',operation:'replay',failure:'network',status:0});
+});

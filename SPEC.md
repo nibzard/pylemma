@@ -1420,3 +1420,19 @@ Stop the indicator on success and failure. Preserve the strategy description and
 Translate browser connection failures into specific recovery instructions.
 Generation has a 45-second total deadline in addition to the provider transport timeout.
 Trace failures include only a permitted exception class, never raw exception text.
+
+## Diagnostic correlation
+
+Each browser API request carries a UUID reference. The Worker and application return that reference in `X-Request-ID`.
+Invalid references are replaced. References identify requests, not people, and do not grant access.
+Errors display the reference so a visitor can report it.
+Browser failure reports contain only the reference, operation, failure category, and numeric response status.
+Reject extra fields. Report delivery is best effort and never retries the original operation.
+
+Worker records contain normalized routes, statuses, durations, admission outcomes, and deployment versions.
+Application and game spans carry the same request reference.
+Sandbox spans include execution stage, resource limits, and permitted runtime failure types.
+A crashed sandbox can record its timeout flag and numeric exit status when available.
+Storage spans record the operation and status without record bodies or credentials.
+No diagnostic event contains a raw URL, arbitrary request header, exception message, or stack trace.
+Existing permitted game trace attributes retain their existing full publication review requirements.

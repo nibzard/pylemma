@@ -13,6 +13,10 @@ from opentelemetry.sdk.trace import SpanProcessor
 
 from pylemma import __version__
 
+request_reference: ContextVar[str | None] = ContextVar(
+    "request_reference", default=None
+)
+
 _active: ContextVar[logfire.Logfire | None] = ContextVar(
     "match_telemetry", default=None
 )
@@ -55,6 +59,11 @@ def span(name: str, **attributes: Any) -> Iterator[Span]:
     try:
         if client is not None:
             try:
+                if request_reference.get() is not None:
+                    attributes["request_id"] = request_reference.get()
+                attributes["deployment_version"] = os.environ.get(
+                    "PYLEMMA_RELEASE", "local"
+                )
                 attributes.update(
                     {"code.filepath": "", "code.function": "", "code.lineno": 0}
                 )

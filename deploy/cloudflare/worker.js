@@ -10,6 +10,7 @@ export class Pylemma extends Container {
   constructor(ctx, env) {
     super(ctx, env);
     this.envVars = {
+      PYLEMMA_RELEASE: env.VERSION_METADATA?.id || 'unknown',
       OPENAI_API_KEY: env.OPENAI_API_KEY,
       LOGFIRE_TOKEN: env.LOGFIRE_TOKEN,
       LOGFIRE_BASE_URL: env.LOGFIRE_BASE_URL,
@@ -20,9 +21,34 @@ export class Pylemma extends Container {
     };
   }
   async onActivityExpired() {
+    diagnosticLog({event:"container.idle_shutdown",version:this.env.VERSION_METADATA?.id || "unknown"});
     await this.destroy();
   }
   async fetch(request) {
+    const supplied = request.headers.get('X-Request-ID');
+    const requestId = validId(supplied) ? supplied.toLowerCase() : crypto.randomUUID();
+    const headers = new Headers(request.headers);
+    headers.set('X-Request-ID',requestId);
+    request = new Request(request,{headers});
+    const start = Date.now();
+    let response;
+    let outcome;
+    try { response = await this.handleRequest(request); }
+    catch {
+      outcome = 'unhandled_error';
+      response = Response.json({detail:'The game server could not respond. Try again shortly.'},{status:503});
+    }
+    outcome ||= response.headers.get('X-Game-Outcome') || (response.status >= 400 ? 'rejected' : 'completed');
+    diagnosticLog({event:'game.request',request_id:requestId,
+      route:diagnosticRoute(new URL(request.url).pathname),
+      method:['GET','POST'].includes(request.method) ? request.method : 'OTHER',
+      status:response.status,outcome,duration_ms:Date.now()-start,
+      version:this.env.VERSION_METADATA?.id || 'unknown'});
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.set('X-Request-ID',requestId);
+    return new Response(response.body,{status:response.status,headers:responseHeaders});
+  }
+  async handleRequest(request) {
     const path = new URL(request.url).pathname;
     if (path === '/_store') {
       if (request.headers.get('Authorization') !== `Bearer ${this.env.STORE_TOKEN}`) {
@@ -60,6 +86,15 @@ export class Pylemma extends Container {
       }
       return Response.json(result ?? {detail:'Record not found.'}, {status:result ? 200 : 404});
     }
+    if (path === '/api/diagnostics' && request.method === 'POST') {
+      let input;
+      try { input = await request.json(); } catch { return new Response(null,{status:422}); }
+      if (!validBrowserFailure(input)) return new Response(null,{status:422});
+      diagnosticLog({event:'browser.failure',failed_request_id:input.request_id,
+        operation:input.operation,failure:input.failure,status:input.status,untrusted:true,
+        version:this.env.VERSION_METADATA?.id || 'unknown'});
+      return new Response(null,{status:204});
+    }
     if (request.method !== 'POST' || !['/api/machines','/api/challenges','/api/tournaments','/api/arena','/api/events'].includes(path)) {
       return Response.json({detail:'Not found.'}, {status:404});
     }
@@ -72,7 +107,7 @@ export class Pylemma extends Container {
       }
       if (!await this.ctx.storage.get('replay:'+input.replay_id)) return new Response(null,{status:404});
       // Worker logs preserve the funnel without starting a container for a click.
-      console.log(JSON.stringify({event:input.event,replay_id:input.replay_id}));
+      diagnosticLog({event:input.event,replay_id:input.replay_id});
       return new Response(null,{status:204});
     }
     if (path === '/api/arena') {
@@ -84,19 +119,19 @@ export class Pylemma extends Container {
         return Response.json({detail:'Supply a player identifier.'},{status:422});
       }
       const saved = await operate(this.ctx.storage,{operation:'arena_entry',id:input.machine_id});
-      if (saved) return Response.json(saved,{status:201});
+      if (saved) return Response.json(saved,{status:201,headers:{'X-Game-Outcome':'saved_entry'}});
     }
     const lifetime = await this.ctx.storage.get(path === '/api/machines' ?
       'lifetime:generation' : 'lifetime:challenge') || 0;
     if (lifetime >= (path === '/api/machines' ? 80 : 1600)) {
-      return Response.json({detail:'The demonstration allowance is exhausted.'}, {status:429});
+      return Response.json({detail:'The demonstration allowance is exhausted.'}, {status:429,headers:{'X-Game-Outcome':'lifetime_quota'}});
     }
     const kind = path === '/api/machines' ? 'generation' : 'challenge';
     const daily = await this.ctx.storage.get(`daily:${new Date().toISOString().slice(0,10)}:${kind}`) || 0;
     if (daily >= (kind === 'generation' ? 20 : 400)) {
-      return Response.json({detail:'The daily demonstration quota is exhausted.'}, {status:429});
+      return Response.json({detail:'The daily demonstration quota is exhausted.'}, {status:429,headers:{'X-Game-Outcome':'daily_quota'}});
     }
-    if (this.busy) return Response.json({detail:'Another operation is running. Try again shortly.'}, {status:429});
+    if (this.busy) return Response.json({detail:'Another operation is running. Try again shortly.'}, {status:429,headers:{'X-Game-Outcome':'busy'}});
     let input;
     try { input = await request.clone().json(); } catch {
       return Response.json({detail:'Invalid request.'}, {status:422});
@@ -131,12 +166,32 @@ export class Pylemma extends Container {
       const response = await super.fetch(request);
       if (!(response.headers.get('Content-Type') || '').includes('application/json')) {
         await response.body?.cancel();
-        return Response.json({detail:'The game server is starting. Try again shortly.'}, {status:503});
+        return Response.json({detail:'The game server is starting. Try again shortly.'}, {status:503,headers:{'X-Game-Outcome':'invalid_container_response'}});
       }
       return response;
+    } catch {
+      return Response.json({detail:'The game server connection was interrupted. Try again shortly.'},
+        {status:503,headers:{'X-Game-Outcome':'container_connection'}});
     }
     finally { this.busy = false; }
   }
+}
+
+export function diagnosticLog(record) {
+  try { console.log(JSON.stringify(record)); } catch { /* Diagnostics never change results. */ }
+}
+
+export function diagnosticRoute(path) {
+  if (/^\/api\/(machines|replays)\/[^/]+$/.test(path)) return path.split('/').slice(0,3).join('/')+'/{id}';
+  return ['/api/machines','/api/arena','/api/challenges','/api/tournaments','/api/events',
+    '/api/diagnostics','/api/leaderboard','/api/games','/_store'].includes(path) ? path : 'unmatched';
+}
+export function validBrowserFailure(input) {
+  return input && typeof input === 'object' && !Array.isArray(input) &&
+    Object.keys(input).length === 4 && validId(input.request_id) &&
+    ['create','arena','challenge','tournament','replay','read'].includes(input.operation) &&
+    ['network','http','invalid_response'].includes(input.failure) &&
+    Number.isInteger(input.status) && input.status >= 0 && input.status <= 599;
 }
 
 async function limitedBody(request, maxBytes) {

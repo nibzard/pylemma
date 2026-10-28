@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from pydantic import Field
-from pydantic_monty import Monty
+from pydantic_monty import Monty, MontyCrashedError, MontyRuntimeError, ResourceLimits
 
 from pylemma.game.models import Contract, Decision
 from pylemma.game.rules import score
@@ -70,19 +70,46 @@ class Sandbox:
             observation=observation,
             source_hash=sha256(blueprint.code.encode()).hexdigest(),
         ) as operation:
-            with self.pool.checkout(
-                limits={
-                    "max_memory": 8_000_000,
-                    "max_feed_duration_secs": 0.05,
-                    "max_recursion_depth": 80,
-                }
-            ) as session:
-                result = session.feed_run(
-                    blueprint.code + "\ndecide(observation)",
-                    inputs={"observation": observation},
+            limits: ResourceLimits = {
+                "max_memory": 8_000_000,
+                "max_feed_duration_secs": 0.05,
+                "max_recursion_depth": 80,
+            }
+            operation.set(stage="checkout", limits=limits, request_timeout_seconds=2.0)
+            try:
+                with self.pool.checkout(limits=limits) as session:
+                    operation.set(stage="execute")
+                    result = session.feed_run(
+                        blueprint.code + "\ndecide(observation)",
+                        inputs={"observation": observation},
+                    )
+                operation.set(stage="validate_decision")
+                decision = Decision.model_validate(result)
+            except MontyCrashedError as error:
+                operation.set(
+                    worker_timed_out=error.timed_out,
+                    worker_exit_status=error.exit_status,
                 )
-            decision = Decision.model_validate(result)
-            operation.set(decision=decision.model_dump())
+                raise
+            except MontyRuntimeError as error:
+                subtype = type(error.exception()).__name__
+                allowed = {
+                    "MemoryError",
+                    "RecursionError",
+                    "TimeoutError",
+                    "KeyError",
+                    "TypeError",
+                    "ValueError",
+                    "IndexError",
+                    "ZeroDivisionError",
+                }
+                operation.set(
+                    runtime_error_type=subtype
+                    if subtype in allowed
+                    else "OtherRuntimeError"
+                )
+                raise
+            operation.set(stage="complete", decision=decision.model_dump())
             return decision
 
     def validate(self, blueprint: Blueprint) -> None:

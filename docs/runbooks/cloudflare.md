@@ -137,3 +137,44 @@ A new Worker can become available before the previous container stops.
 During the arena deployment, the first arena request returned 404 from the container.
 The same request succeeded after the instance became inactive and restarted.
 Check the new execution endpoint after the idle restart before declaring deployment verified.
+
+## Diagnose a visitor error
+
+1. Obtain the request reference from the displayed error and its approximate time.
+2. Find `game.request` and `browser.failure` records with that reference in Worker logs.
+3. Compare the response status, outcome, duration, and deployment version.
+4. Query Logfire for the same reference and inspect the failed stage.
+5. Compare Worker and application deployment versions if a new endpoint returns 404 during rollout.
+6. Reproduce with the stored rules offline before making another provider request.
+
+Use `wrangler tail --config deploy/cloudflare/wrangler.jsonc --format json` for a current Worker stream.
+A tail starts with current activity. It does not retrieve historical requests.
+Worker diagnostics distinguish `busy`, `daily_quota`, `lifetime_quota`, `saved_entry`, `invalid_container_response`, and `container_connection`.
+A browser failure report can exist without a server request record when the connection failed before admission.
+Browser reports are untrusted observations. Their absence does not prove that a request succeeded.
+
+Use this Logfire query with the visitor's UUID and an appropriate time range:
+
+```sql
+SELECT start_timestamp, span_name, trace_id,
+       attributes->>'stage' AS stage,
+       attributes->>'status' AS status,
+       attributes->>'outcome' AS outcome,
+       attributes->>'error_type' AS error_type,
+       attributes->>'runtime_error_type' AS runtime_error_type,
+       attributes->>'deployment_version' AS deployment_version
+FROM records
+WHERE service_name = 'pylemma'
+  AND start_timestamp >= now() - interval '1 hour'
+  AND attributes->>'request_id' = 'REQUEST_UUID'
+ORDER BY start_timestamp
+LIMIT 100
+```
+
+The request span uses `application.request`. Separate game traces share the request reference.
+`machine.decision` records `checkout`, `execute`, or `validate_decision` when a failure occurs.
+Inspect its `limits`, `request_timeout_seconds`, `worker_timed_out`, and `worker_exit_status` attributes when present.
+`machine.generate` separates provider waiting from blueprint validation and records configured deadlines.
+`storage.request` distinguishes a storage failure from a game failure.
+A missing `error_type` on an older trace cannot establish the historical failure's cause.
+Diagnostic records deliberately omit raw exception text, request bodies, and credentials.

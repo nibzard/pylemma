@@ -294,3 +294,17 @@ Generation and validation remain one stage. No streaming protocol or estimated c
 `generator.py` enforces a 45-second total deadline around the single provider request.
 `telemetry.py` records permitted failure classes and replaces other class names with `UnexpectedError`.
 It does not record raw exceptions or their messages.
+
+## Request diagnostics
+
+The browser creates a UUID request reference and sends it through `X-Request-ID`.
+`POST /api/diagnostics` accepts a small, validated failure report without a replay requirement.
+The Worker records reports without starting the container. Local FastAPI records equivalent `browser.failure` spans.
+Reports are explicitly untrusted. Failed delivery does not retry the operation.
+
+Worker request logs include normalized routes and deployment versions from `VERSION_METADATA`.
+The Worker supplies that version to the container through `PYLEMMA_RELEASE`.
+Application middleware sets a context-local request reference. Separate game traces retain this reference without inheriting request baggage.
+The remote store forwards the reference to internal storage calls.
+`telemetry.py` attaches the reference and deployment version to explicit spans.
+Sandbox and generation stages identify which boundary failed. Limits and permitted error subtypes provide further evidence.

@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any, Literal, Protocol
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import logfire
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -19,7 +19,7 @@ from pylemma.generator import Generator
 from pylemma.machine_store import MachineStore
 from pylemma.machines import Blueprint, Machine, Sandbox, arena, play, tournament
 from pylemma.remote_store import RemoteMachineStore
-from pylemma.telemetry import configure, match_context, span
+from pylemma.telemetry import configure, match_context, request_reference, span
 from pylemma.trace_links import inspect_link
 
 
@@ -53,6 +53,16 @@ class FunnelEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     event: Literal["inspection_click", "example_inspection_click", "share_click"]
     replay_id: UUID
+
+
+class BrowserFailure(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    request_id: Annotated[
+        str, Field(pattern=r"^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$")
+    ]
+    operation: Literal["create", "arena", "challenge", "tournament", "replay", "read"]
+    failure: Literal["network", "http", "invalid_response"]
+    status: Annotated[int, Field(ge=0, le=599)]
 
 
 class ArenaRequest(TournamentRequest):
@@ -97,10 +107,59 @@ def create_app(
     async def flush_trace(
         request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        response = await call_next(request)
-        if request.method == "POST":
-            await asyncio.to_thread(flush)
-        return response
+        if not request.url.path.startswith("/api/"):
+            return await call_next(request)
+        try:
+            identifier = str(UUID(request.headers.get("X-Request-ID", "")))
+        except ValueError:
+            identifier = str(uuid4())
+        token = request_reference.set(identifier)
+        try:
+            with (
+                match_context(telemetry),
+                span(
+                    "application.request",
+                    method=request.method
+                    if request.method in {"GET", "POST"}
+                    else "OTHER",
+                    route="unmatched",
+                ) as operation,
+            ):
+                try:
+                    response = await call_next(request)
+                    operation.set(
+                        status=response.status_code,
+                        outcome=response.headers.get(
+                            "X-Game-Outcome",
+                            "rejected" if response.status_code >= 400 else "completed",
+                        ),
+                        route=getattr(request.scope.get("route"), "path", "unmatched"),
+                    )
+                    response.headers["X-Request-ID"] = identifier
+                except asyncio.CancelledError:
+                    operation.set(status=499)
+                    raise
+                except Exception:
+                    operation.set(status=500)
+                    raise
+            if request.method == "POST":
+                await asyncio.to_thread(flush)
+            return response
+        finally:
+            request_reference.reset(token)
+
+    @app.post("/api/diagnostics", status_code=204)
+    async def browser_failure(body: BrowserFailure) -> Response:
+        with span(
+            "browser.failure",
+            failed_request_id=body.request_id,
+            operation=body.operation,
+            failure=body.failure,
+            status=body.status,
+            untrusted=True,
+        ):
+            pass
+        return Response(status_code=204)
 
     assets = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=assets), name="static")
@@ -128,13 +187,23 @@ def create_app(
         if not body.public_acknowledged:
             raise HTTPException(422, "Acknowledge the public record before creating.")
         if gate.locked():
-            raise HTTPException(429, "Another operation is running. Try again shortly.")
+            raise HTTPException(
+                429,
+                "Another operation is running. Try again shortly.",
+                headers={"X-Game-Outcome": "busy"},
+            )
         async with gate:
             if not store.reserve(daily_limit):
-                raise HTTPException(429, "The daily generation quota is exhausted.")
+                raise HTTPException(
+                    429,
+                    "The daily generation quota is exhausted.",
+                    headers={"X-Game-Outcome": "daily_quota"},
+                )
             with match_context(telemetry), span("machine.create") as operation:
                 try:
+                    operation.set(stage="generation")
                     blueprint = await builder.generate(body.strategy)
+                    operation.set(stage="sample_validation")
                     await asyncio.to_thread(sandbox.validate, blueprint)
                     result = Machine.create(
                         body.name,
@@ -143,8 +212,9 @@ def create_app(
                         public_listing=body.public_listing,
                     )
                     if body.preview:
+                        operation.set(stage="store_machine")
                         store.put(result)
-                        operation.set(machine_id=str(result.id))
+                        operation.set(stage="complete", machine_id=str(result.id))
                         return {"machine": result}
                     trial = await asyncio.to_thread(tournament, sandbox, result)
                     store.put(result)
@@ -175,10 +245,18 @@ def create_app(
     async def run_tournament(body: TournamentRequest) -> dict[str, Any]:
         player = machine(body.machine_id)
         if gate.locked():
-            raise HTTPException(429, "Another game is running. Try again shortly.")
+            raise HTTPException(
+                429,
+                "Another game is running. Try again shortly.",
+                headers={"X-Game-Outcome": "busy"},
+            )
         async with gate:
             if not store.reserve_challenge(daily_limit * 20):
-                raise HTTPException(429, "The daily game allowance is exhausted.")
+                raise HTTPException(
+                    429,
+                    "The daily game allowance is exhausted.",
+                    headers={"X-Game-Outcome": "daily_quota"},
+                )
             with match_context(telemetry), span("machine.tournament") as operation:
                 try:
                     result = await asyncio.to_thread(tournament, sandbox, player)
@@ -213,13 +291,23 @@ def create_app(
         if saved is not None:
             return saved
         if gate.locked():
-            raise HTTPException(429, "Another game is running. Try again shortly.")
+            raise HTTPException(
+                429,
+                "Another game is running. Try again shortly.",
+                headers={"X-Game-Outcome": "busy"},
+            )
         async with gate:
             if not store.reserve_challenge(daily_limit * 20):
-                raise HTTPException(429, "The daily game allowance is exhausted.")
+                raise HTTPException(
+                    429,
+                    "The daily game allowance is exhausted.",
+                    headers={"X-Game-Outcome": "daily_quota"},
+                )
             with match_context(telemetry), span("machine.arena") as operation:
                 try:
+                    operation.set(stage="select_opponents")
                     opponents = store.arena_opponents(player.id)
+                    operation.set(stage="execution", opponent_count=len(opponents))
                     result = await asyncio.to_thread(arena, sandbox, player, opponents)
                     data = {
                         "kind": "arena",
@@ -227,10 +315,12 @@ def create_app(
                         "result": result,
                         "trace_id": operation.trace_id,
                     }
+                    operation.set(stage="store_replay")
                     replay_id = store.replay(data)
                     operation.set(
                         machine_id=str(player.id),
                         replay_id=str(replay_id),
+                        stage="complete",
                         completed=True,
                         referred=body.referral is not None,
                     )
@@ -260,10 +350,18 @@ def create_app(
     async def challenge(body: Challenge) -> dict[str, Any]:
         left, right = machine(body.left), machine(body.right)
         if gate.locked():
-            raise HTTPException(429, "Another operation is running. Try again shortly.")
+            raise HTTPException(
+                429,
+                "Another operation is running. Try again shortly.",
+                headers={"X-Game-Outcome": "busy"},
+            )
         async with gate:
             if not store.reserve_challenge(daily_limit * 20):
-                raise HTTPException(429, "The daily challenge quota is exhausted.")
+                raise HTTPException(
+                    429,
+                    "The daily challenge quota is exhausted.",
+                    headers={"X-Game-Outcome": "daily_quota"},
+                )
             with match_context(telemetry), span("machine.challenge") as operation:
                 try:
                     result = await asyncio.to_thread(
@@ -281,6 +379,7 @@ def create_app(
                         }
                     )
                     operation.set(
+                        stage="complete",
                         completed=True,
                         referred=body.referral is not None,
                         replay_id=str(replay),

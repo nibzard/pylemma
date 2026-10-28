@@ -1,4 +1,4 @@
-import { STAGES, requestStage, requestError } from './progress.mjs';
+import { STAGES, requestStage, requestError, failureReport } from './progress.mjs';
 import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl } from './story.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -73,18 +73,25 @@ function message(text, isError = false) {
   status.textContent = text;
   if (isError) status.scrollIntoView({block:'center'});
 }
+function apiFailure(path, requestId, failure, status, detail) {
+  // Best effort only. A failed report must never retry the original operation.
+  void fetch('/api/diagnostics',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(failureReport(path,requestId,failure,status)),keepalive:true}).catch(()=>{});
+  return new Error(requestError(path,status,detail) + ' Reference: ' + requestId);
+}
 async function api(path, body) {
+  const requestId = crypto.randomUUID();
   if (submitting) updateProgress(requestStage(path,body ? 'POST' : 'GET'));
   let response;
   try {
     response = await fetch(path, body ? {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
-    } : {});
-  } catch { throw new Error(requestError(path,0)); }
+      method:'POST', headers:{'Content-Type':'application/json','X-Request-ID':requestId}, body:JSON.stringify(body),
+    } : {headers:{'X-Request-ID':requestId}});
+  } catch { throw apiFailure(path,requestId,'network',0); }
   let data;
   try { data = await response.json(); }
-  catch { throw new Error(requestError(path,response.status)); }
-  if (!response.ok) throw new Error(requestError(path,response.status,data.detail));
+  catch { throw apiFailure(path,requestId,'invalid_response',response.status); }
+  if (!response.ok) throw apiFailure(path,requestId,'http',response.status,data.detail);
   return data;
 }
 async function run(node, action, waiting) {

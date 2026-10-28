@@ -8,6 +8,7 @@ import httpx
 
 from pylemma.machines import Machine
 from pylemma.public_games import timestamp
+from pylemma.telemetry import request_reference, span
 
 
 class RemoteMachineStore:
@@ -28,13 +29,20 @@ class RemoteMachineStore:
         self.client.close()
 
     def call(self, operation: str, **values: Any) -> Any:
-        response = self.client.post("/_store", json={"operation": operation, **values})
-        if response.status_code == 404 and operation == "arena_entry":
-            return None
-        if response.status_code == 404:
-            raise KeyError(values.get("id"))
-        response.raise_for_status()
-        return response.json()
+        identifier = request_reference.get()
+        headers = {"X-Request-ID": identifier} if identifier else {}
+        with span("storage.request", operation=operation) as attempt:
+            response = self.client.post(
+                "/_store", json={"operation": operation, **values}, headers=headers
+            )
+            attempt.set(status=response.status_code)
+            if response.status_code == 404 and operation == "arena_entry":
+                attempt.set(expected_missing=True)
+                return None
+            if response.status_code == 404:
+                raise KeyError(values.get("id"))
+            response.raise_for_status()
+            return response.json()
 
     def reserve(self, daily_limit: int) -> bool:
         return bool(self.call("reserve", kind="generation", limit=daily_limit))

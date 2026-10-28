@@ -14,3 +14,11 @@ export function requestError(path, status, detail) {
   if (path === '/api/machines') return 'The connection was lost while building your player. Your description is still here. Check your connection before trying again.';
   return 'The game server could not respond. Your player is saved. Wait a moment, then retry the game.';
 }
+
+/** Reports contain no URL, exception message, player text, or browser metadata. */
+export function failureReport(path, requestId, failure, status) {
+  const operations = {'/api/machines':'create','/api/arena':'arena',
+    '/api/challenges':'challenge','/api/tournaments':'tournament'};
+  return {request_id:requestId, operation:path.startsWith('/api/replays/') ? 'replay' :
+    (operations[path] || 'read'),failure,status};
+}
