@@ -46,4 +46,12 @@ The lifetime limit remains finite and does not reset at midnight.
 
 ## Next implementation step
 
-Run boundary checks, deploy, and verify admission without a model request.
+Monitor the shared daily allowance using existing diagnostic records.
+
+## Deployment verification
+
+Deployed Worker version `8ed3c620-492c-4826-baeb-a5e3f7e68461` at `pylemma.aor.fyi`.
+The container image did not change.
+A POST with an empty object to `/api/machines` returned HTTP 422 after the quota checks.
+This confirms that the exhausted daily allowance no longer blocks admission.
+The request failed validation before container startup or quota reservation. It made no model request.
