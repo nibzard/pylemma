@@ -1,0 +1,1 @@
+The user explicitly requested clearing all previous database results. Delete only replay, public summary, and arena index keys in one transaction. Preserve machine, build, daily, and lifetime keys. A persistent marker prevents future deployments from deleting new games. All 25 Worker tests passed.
