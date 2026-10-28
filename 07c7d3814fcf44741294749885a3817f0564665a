@@ -1,0 +1,1 @@
+Add @ to browser handles when absent, preserve an existing prefix, and trim surrounding whitespace. Normalize on blur and submit. Ten browser tests passed.
