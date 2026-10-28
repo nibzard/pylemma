@@ -1,0 +1,1 @@
+Make results understandable to new visitors: show actual rules, explain the per-round score scale, omit internal labels for current-only pages, and stack rows on mobile. Existing public summaries are enriched without rewriting records. Sharing text explains the match format. Four Python, 26 Worker, and 17 browser tests passed.
