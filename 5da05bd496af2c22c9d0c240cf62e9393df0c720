@@ -1,0 +1,1 @@
+Investigated the 15:07 UTC sandbox failure; the same blueprint passed locally and in constrained Docker. Added real request-stage feedback, network recovery messages, a 45-second total generation bound, and safe failure classes. See docs/development/2026-10-28-runtime-feedback.md. Full prior suite: 238 tests; final targeted suite: 45 tests; browser and Worker checks pass.
