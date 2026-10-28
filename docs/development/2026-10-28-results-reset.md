@@ -39,7 +39,8 @@ Git diff checks passed, and file fingerprints matched before and after checks.
 
 ## Failures and verified corrections
 
-None.
+The first read after deployment still reached the previous Durable Object version and reported 25 results.
+After deployment propagation, the same endpoint reported zero.
 
 ## Known limits
 
@@ -49,4 +50,15 @@ Logfire traces are outside this database cleanup.
 
 ## Next implementation step
 
-Deploy, trigger the one-time cleanup, and verify the public indexes and known replay identifiers.
+No further cleanup is required.
+
+
+## Live verification
+
+Worker version: 449db312-2663-4629-b54d-6fe3aeb7bd08.
+The games, arena, and leaderboard endpoints each returned zero entries.
+All 25 previously listed replay identifiers returned HTTP 404.
+One additional unlisted replay also returned HTTP 404.
+A saved player and its completed build recovery record remained readable.
+No generation or challenge requests were made during verification.
+The container image is unchanged.
