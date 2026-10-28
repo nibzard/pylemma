@@ -1,0 +1,1 @@
+Remove historical AI player imports from hosted startup and compile bytecode at build time. Use one basic container with five-minute idle sleep. Offline CPU-limited import time fell from 40.5 to 3.9 seconds; live baseline challenge took 83.2 seconds. All 247 Python, 19 Worker, and eight browser tests passed.
