@@ -1,0 +1,20 @@
+The user requests an Inspect in Logfire button and supplies a public
+sharing URL for The open hand's tournament. Verify the complete trace
+before attaching that exact URL to its stored trace identifier.
+
+A fresh signed-out browser opens the supplied public link. All 94
+records match the expected root, three matches, thirty rounds, and sixty
+decisions. Every observation and decision matches the stored replay.
+Resource identifiers are redacted; no HTTP metadata or exceptions are
+present. The selected root span and replay identifier match.
+
+Other games receive ordinary project trace links with an explicit
+account-and-project-access requirement. Official Logfire documentation
+clarifies that public projects are public within the organization, not
+to every signed-in account. Supported per-trace public sharing remains
+manual. Do not use a connected-app browser handoff as a public URL.
+
+Validation: 231 Python tests and ten JavaScript tests pass. The live
+public action opens the verified read-only trace from a fresh browser.
+Decision: docs/decisions/008-inspect-game-trace.md
+Evidence: docs/development/2026-10-28-inspect-logfire.md
