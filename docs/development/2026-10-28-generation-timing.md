@@ -48,4 +48,36 @@ Connection timings include local scheduling. DNS is not measured separately from
 
 ## Next implementation step
 
-Run offline checks, deploy, and measure one hosted generation.
+Use these measurements to target local client preparation and cold startup before changing models.
+
+## Hosted measurement
+
+Deployed Worker version `66a55870-c5b5-4a48-9f4d-39c0b4abb553`.
+The container information endpoint confirmed image `94037f95d430ddd1fd6625fb1a37d6b1cadd9d90ce6b4f41e289b14616e4719c` before the call.
+One unlisted preview generation returned HTTP 201 in 29.350618 seconds.
+Request reference: `a18fc3c9-36c4-4ed6-a5ac-cfad69e3bce3`.
+The initial Logfire query preceded ingestion. A later query returned the completed spans with the expected deployment version.
+
+| Interval | Seconds |
+| --- | ---: |
+| Generation start to HTTP dispatch | 13.054270 |
+| Dispatch to request body sent | 0.300710 |
+| TCP connection setup | 0.099225 |
+| TLS handshake | 0.103046 |
+| Request body sent to first nonempty content | 2.104505 |
+| First content to stream completion | 1.699518 |
+| Stream completion to blueprint validation | 0.000333 |
+| Complete generation span | 17.254449 |
+| Complete application request span | 18.621225 |
+| External request elapsed | 29.350618 |
+
+Connection rows are subdivisions of dispatch-to-send time, not additional intervals.
+The application boundary excludes approximately 10.73 seconds of external latency, including startup, proxying, and transport.
+Process CPU time was 1.456997 seconds overall and 1.314678 seconds before dispatch.
+The 13.05-second pre-dispatch interval proves that local preparation dominates this generation sample.
+CPU throttling on the 1/16-CPU instance is a plausible contributor; these measurements do not isolate its exact share.
+
+Usage was 240 input tokens and 174 output tokens, with zero reasoning or cache tokens.
+At standard model prices, estimated provider cost was USD 0.000111 against the USD 0.01 reservation.
+No further model calls were made for this measurement.
+This streamed sample does not prove the timing breakdown of the earlier non-streamed request.
