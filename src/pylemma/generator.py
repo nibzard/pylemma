@@ -11,7 +11,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from pylemma.machines import Blueprint
-from pylemma.player.model import MODEL_ID
+from pylemma.model_config import MODEL_ID
 from pylemma.telemetry import span
 
 GENERATION_TIMEOUT = 45.0

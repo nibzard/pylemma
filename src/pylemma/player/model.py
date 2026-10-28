@@ -28,13 +28,13 @@ from pydantic_ai.profiles.openai import OpenAIJsonSchemaTransformer
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from pylemma.game.models import Decision, MatchSettings
+from pylemma.model_config import MODEL_ID as MODEL_ID
 from pylemma.player.service import DecisionResult, PlayerError
 from pylemma.records.models import AttemptMetadata, ErrorCategory, Observation
 from pylemma.telemetry import span
 
 MAX_INPUT_TOKENS = 65_536
 MAX_REQUEST_BYTES = 32_000
-MODEL_ID = "gpt-6-luna"
 SYSTEM_VERSION = "pd-player-v1"
 SYSTEM_PROMPT = """Play ten rounds under pd-v1. Choose cooperate or betray.
 Points (player, opponent): cooperate/cooperate (3,3), cooperate/betray (0,5),

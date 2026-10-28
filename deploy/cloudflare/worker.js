@@ -4,7 +4,7 @@ import { inspectLink } from './trace-links.mjs';
 
 export class Pylemma extends Container {
   defaultPort = 8080;
-  sleepAfter = '30s';
+  sleepAfter = '5m';
   envVars;
   busy = false;
   constructor(ctx, env) {
@@ -184,11 +184,14 @@ export class Pylemma extends Container {
     }
     this.busy = true;
     try {
-      // The default port deadline is shorter than observed cold starts on lite.
+      // Record startup separately from application execution.
+      const readyStart = Date.now();
       diagnosticLog({event:'container.wait',request_id:request.headers.get('X-Request-ID'),
         port_ready_timeout_ms:60000,version:this.env.VERSION_METADATA?.id || 'unknown'});
       await this.startAndWaitForPorts({ports:this.defaultPort,
         cancellationOptions:{abort:request.signal,portReadyTimeoutMS:60000}});
+      diagnosticLog({event:"container.ready",request_id:request.headers.get("X-Request-ID"),
+        duration_ms:Date.now()-readyStart,version:this.env.VERSION_METADATA?.id || "unknown"});
       const response = await super.fetch(request);
       if (!(response.headers.get('Content-Type') || '').includes('application/json')) {
         await response.body?.cancel();

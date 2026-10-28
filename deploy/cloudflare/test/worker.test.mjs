@@ -40,11 +40,17 @@ test('arena reads and invalid requests never start the container',async()=>{
   assert.equal(worker.starts,0);
 });
 
-test('new arena entry forwards only after validating the stored player',async()=>{
+test('new arena entry forwards only after validating the stored player',async(t)=>{
+  const logs=[];
+  t.mock.method(console,'log',line=>logs.push(JSON.parse(line)));
   const worker=new Pylemma({storage:{get:async key=>key === 'machine:'+id ? {id} : null}},{});
   const response=await worker.fetch(request('/api/arena',{machine_id:id}));
   assert.equal(response.status,200);
   assert.equal(worker.starts,1);
+  const ready=logs.find(row=>row.event === 'container.ready');
+  assert.ok(ready);
+  assert.equal(ready.request_id,response.headers.get('X-Request-ID'));
+  assert.ok(ready.duration_ms >= 0);
 });
 
 test('diagnostics correlate safe routes and reject extra browser fields',async(t)=>{

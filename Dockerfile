@@ -3,7 +3,8 @@ RUN pip install --no-cache-dir uv==0.10.0
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
-RUN uv sync --locked --no-dev
+RUN uv sync --locked --no-dev --compile-bytecode
+RUN .venv/bin/python3 -m compileall -q src
 RUN useradd --create-home app
 USER app
 ENV PATH="/app/.venv/bin:$PATH"

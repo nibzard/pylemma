@@ -20,7 +20,11 @@ Recheck rates before changing model configuration or increasing the allowance.
 
 Cloudflare billing remains metered. The existing paid plan includes container usage allowances.
 No new subscription was created. Unrelated account use can consume shared allowances.
-The container uses 256 MiB and sleeps after thirty idle seconds.
+The basic container uses one quarter of a CPU and 1 GiB of memory.
+It sleeps after five idle minutes to avoid repeated cold starts during a session.
+Five idle minutes cost about USD 0.000834 for memory and disk before included allowances.
+CPU usage is billed separately. One instance remains the limit.
+Rates: https://developers.cloudflare.com/containers/platform/pricing/
 Static pages and stored reads do not start it.
 The USD 1 remainder is a verification and infrastructure buffer, not a provider-enforced account ceiling.
 
@@ -36,7 +40,8 @@ The USD 1 remainder is a verification and infrastructure buffer, not a provider-
 
 The Docker build context excludes local credentials, databases, and development records.
 Default Docker networking failed on the development host. Host networking completed the build.
-The image runs as an unprivileged user and starts one Uvicorn worker.
+The image compiles Python bytecode during its build.
+It runs as an unprivileged user and starts one Uvicorn worker.
 
 ## Runtime secrets
 
