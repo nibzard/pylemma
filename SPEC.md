@@ -46,6 +46,9 @@ Equal scores share a rank. Rank the entire current public set before pagination.
 Exclude earlier formats and unlisted entries. Keep points per round in result details.
 A page containing only the current arena explains its common opponents without an internal version label.
 Saved replays remain immutable and render their recorded round counts.
+Completed runs have server-rendered share metadata and a PNG image of their recorded choices.
+Images show the handle, total points, and a short invitation. They exclude changing ranks.
+Shared result pages provide a direct challenge action.
 These rules supersede conflicting round counts and opponent selection below.
 
 ### Execution and scoring

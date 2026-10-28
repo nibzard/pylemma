@@ -10,10 +10,10 @@ class Container {
   async startAndWaitForPorts() {}
   async fetch(request) { this.starts++; return this.forward ? this.forward(request) : Response.json({forwarded:true}); }
 }`);
-for (const file of ['storage.mjs','trace-links.mjs']) {
+for (const file of ['storage.mjs','trace-links.mjs','share-card.mjs']) {
   source=source.replace(`'./${file}'`,JSON.stringify(new URL('../'+file,import.meta.url).href));
 }
-const {Pylemma} = await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {Pylemma,default:edge} = await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const id='00000000-0000-0000-0000-000000000001';
 const replay='00000000-0000-0000-0000-000000000002';
 const request=(path,body)=>new Request('https://example.test'+path,body ? {
@@ -231,4 +231,51 @@ test('disconnect does not abort admitted work and saved builds wait for the exec
   const complete=await worker.fetch(request('/api/builds/'+id));
   assert.equal((await complete.json()).machine.id,replay);
   assert.equal(worker.starts,1);
+});
+
+test('share pages and images use stored results without container or generation calls',async()=>{
+  const data={kind:'arena',machine:{name:'@test',public_listing:false},
+    result:{total:600,suite_version:'arena-v2',rules_version:'pd-v1',
+      matches:Array.from({length:10},()=>({rounds:Array.from({length:20},()=>({choices:['cooperate','cooperate']}))}))}};
+  const worker=new Pylemma({storage:{get:async key=>key==='replay:'+id ? data : null}},{});
+  const env={GAME:{getByName:()=>worker},ASSETS:{fetch:async()=>new Response('<html><head><title>Default</title></head><body>App</body></html>')}};
+  const page=await edge.fetch(request('/?replay='+id+'&ref=share'),env);
+  assert.equal(page.status,200);
+  const html=await page.text();
+  assert.match(html,/@test scored 600 points/);
+  assert.equal((html.match(/<title>/g)||[]).length,1);
+  assert.match(html,/og:image/);
+  const png=await edge.fetch(request('/og/v1/'+id+'.png'),env);
+  assert.equal(png.headers.get('Content-Type'),'image/png');
+  assert.match(png.headers.get('Cache-Control'),/immutable/);
+  assert.ok((await png.arrayBuffer()).byteLength>100);
+  const head=await edge.fetch(new Request('https://example.test/og/v1/'+id+'.png',{method:'HEAD'}),env);
+  assert.equal(head.status,200); assert.equal(await head.text(),'');
+  assert.equal((await edge.fetch(request('/og/v1/bad.png'),env)).status,404);
+  assert.equal((await edge.fetch(request('/og/bad?replay='+id),env)).status,404);
+  assert.equal((await edge.fetch(request('/og/v1/'+replay+'.png'),env)).status,404);
+  assert.equal((await edge.fetch(request('/?replay='+replay),env)).status,404);
+  assert.equal(worker.starts,0);
+});
+
+test('image cache avoids repeated replay reads and keeps HEAD responses empty',async(t)=>{
+  const saved=new Map(),pending=[];
+  const previous=globalThis.caches;
+  t.after(()=>{if(previous === undefined) delete globalThis.caches; else globalThis.caches=previous;});
+  globalThis.caches={default:{
+    match:async key=>saved.get(key.url)?.clone(),
+    put:async(key,response)=>saved.set(key.url,response),
+  }};
+  let reads=0;
+  const data={kind:'challenge',machines:[{name:'@x'},{name:'@y'}],
+    result:{totals:[30,30],rounds:Array.from({length:10},()=>({choices:['cooperate','cooperate']}))}};
+  const env={GAME:{getByName:()=>({fetch:async()=>{reads++;return Response.json(data);}})}};
+  const ctx={waitUntil:promise=>pending.push(promise)};
+  const url='https://example.test/og/v1/'+id+'.png';
+  assert.equal((await edge.fetch(new Request(url),env,ctx)).status,200);
+  await Promise.all(pending);
+  const head=await edge.fetch(new Request(url,{method:'HEAD'}),env,ctx);
+  assert.equal(await head.text(),'');
+  assert.equal((await edge.fetch(new Request(url),env,ctx)).status,200);
+  assert.equal(reads,1);
 });

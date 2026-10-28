@@ -293,3 +293,17 @@ The authenticated status operation includes the reset counts.
 New games created after the reset remain stored.
 Previous replay links return not found; saved player links remain available.
 This operation does not delete Logfire traces.
+
+## Verify strategy share images
+
+Use an existing replay identifier. These checks do not generate a player or run a game.
+
+1. Fetch `/?replay=REPLAY_ID` and check the initial HTML for `twitter:card` and `og:image`.
+2. Fetch `/og/v1/REPLAY_ID.png` and confirm `Content-Type: image/png`.
+3. Open the replay and check the image, **Share on X**, and **Challenge this strategy**.
+4. Check the image at a mobile viewport.
+
+The image contains recorded choices and total points, not current rank.
+Images use a one-day cache. Increment the image route version when changing the design.
+The image renderer runs in the Worker. Static and Worker changes do not require a new container image.
+X controls its own preview cache and display. Successful HTTP checks do not prove that X has refreshed a card.

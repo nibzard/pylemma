@@ -141,3 +141,5 @@ nav { display: flex; align-items: center; gap: 12px; font-size: 13px; }
   .arena-board .replay-cell { grid-column: 1; grid-row: 4; }
   .arena-board .challenge-cell { grid-column: 2; grid-row: 4; }
 }
+
+.strategy-image { display: block; width: 100%; height: auto; margin-bottom: 1.25rem; border-radius: 8px; }

@@ -91,8 +91,8 @@ function button(text, action, className) {
   node.onclick = action;
   return node;
 }
-function link(text, values) {
-  const node = el('a', text);
+function link(text, values, className) {
+  const node = el('a', text, className);
   node.href = '/?' + new URLSearchParams(values);
   return node;
 }
@@ -183,13 +183,21 @@ function sharing(machine, result) {
     el('p',result.suite_version === 'arena-v2' ?
       `${result.total} points` :
       `${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'}.`, 'lead'));
-  const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id,ref:'share'});
+  const url = shareUrl(machine);
   const rank = el('p',undefined,'share-rank'); rank.hidden=true; card.append(rank);
   const post = el('a','Share on X','inspect-button share-post');
   post.href = 'https://twitter.com/intent/tweet?' + new URLSearchParams({text:shareText(machine,result),url});
   post.target = '_blank'; post.rel = 'noopener noreferrer';
   post.onclick = () => track('share_click');
-  const copy = button('Copy challenge link',()=>copyChallenge(machine,copy));
+  const copy = button('Copy share link',()=>copyChallenge(machine,copy));
+  if (activeReplay) {
+    const image=el('img',undefined,'strategy-image');
+    image.src='/og/v1/'+encodeURIComponent(activeReplay)+'.png';
+    image.alt='Your recorded moves. Mint: both cooperated. Coral: only you betrayed. Amber: only they betrayed. Purple: both betrayed.';
+    image.width=1200; image.height=630; image.loading='lazy';
+    image.onerror=()=>image.remove();
+    card.prepend(image);
+  }
   card.append(post,document.createTextNode(' '),copy);
   return card;
 }
@@ -212,14 +220,18 @@ async function showStanding(machine,result,rankNode,card) {
   }
 }
 
+function shareUrl(machine) {
+  return location.origin+'/?'+new URLSearchParams(activeReplay ?
+    {replay:activeReplay,ref:'share'} : {challenge:machine.id,ref:'share'});
+}
 async function copyChallenge(machine, control) {
   track('share_click');
-  const url = location.origin + '/?' + new URLSearchParams({challenge:machine.id,ref:'share'});
+  const url = shareUrl(machine);
   try {
     await navigator.clipboard.writeText(url);
-    control.textContent = 'Challenge link copied';
-    message('Challenge link copied. Send it to someone and see how their player responds.');
-  } catch { message('Your challenge link: ' + url, true); }
+    control.textContent = 'Share link copied';
+    message('Share link copied. It includes your result and strategy image.');
+  } catch { message('Your share link: ' + url, true); }
 }
 function traceDetails(data, container, selected) {
   if (selected) container.append(el('p',selected.text,'finding'));
@@ -341,7 +353,8 @@ function showResult(data) {
       shared.append(refsView(data.result.total));
     }
     const actions = el('div', undefined, 'actions');
-    actions.append(button('Revise strategy', () => showBuilder(data.machine), 'primary'));
+    actions.append(link('Challenge this strategy',{challenge:data.machine.id,ref:'share'},'primary'),
+      button('Revise strategy', () => showBuilder(data.machine)));
     const shareCard=sharing(data.machine,data.result);
     shared.append(actions, shareCard, el('h2', 'Where the points came from'));
     if (ranked) void showStanding(data.machine,data.result,position,shareCard);

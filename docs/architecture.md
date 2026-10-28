@@ -360,3 +360,29 @@ The arena API accepts `ranked=1` and an optional `player` UUID.
 The response includes that player's standing independently of the selected page.
 Ranks can change when new strategies enter. Shared text captures the rank when viewed.
 Mobile rows stack the player, score, strategy, and actions without horizontal scrolling.
+
+## Strategy share images
+
+Hosted replay URLs return Open Graph and X card metadata in the initial HTML.
+The Worker reads the existing replay through the Durable Object.
+It never starts the container or reserves game or generation quota.
+The versioned route `/og/v1/{replay_id}.png` renders a 1200 by 630 PNG.
+Each row represents a recorded match; each square represents a recorded round.
+Mint means mutual cooperation. Coral means only the first player betrayed.
+Amber means only the opponent betrayed. Purple means mutual betrayal.
+The image shows the first player's handle and total points.
+Challenge images show the first player's points.
+Historical formats keep their actual match and round counts.
+Images exclude mutable rank and strategy prose.
+
+A fixed bitmap alphabet and native compression avoid font downloads and rendering dependencies.
+Non-ASCII image characters use a replacement glyph; HTML metadata keeps the original handle.
+Handles longer than 29 characters are shortened only in the image.
+Images use a one-day browser and edge cache. A design change must increment the image route version.
+A cached image can remain available for that day after a replay is removed.
+Unlisted results remain available to holders of their existing unlisted URLs.
+Invalid, missing, or incomplete results return 404 and are not cached.
+
+Share actions copy the replay URL. The result page includes a direct challenge link.
+The ordinary local Python server has no image renderer; share images are a hosted Worker feature.
+An unavailable preview image does not prevent viewing the result or sharing its URL.

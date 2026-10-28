@@ -1,6 +1,7 @@
 import { Container } from '@cloudflare/containers';
 import { clearPreviousResults, operate, validId, DAILY_GENERATIONS, DAILY_CHALLENGES, MAX_GENERATIONS, MAX_CHALLENGES } from './storage.mjs';
 import { inspectLink } from './trace-links.mjs';
+import { cardData, cardPng, cardMetadata } from './share-card.mjs';
 
 export class Pylemma extends Container {
   defaultPort = 8080;
@@ -291,8 +292,40 @@ async function limitedBody(request, maxBytes) {
   return result;
 }
 
+async function shareResponse(request,env,ctx) {
+  const url=new URL(request.url);
+  const image=url.pathname.match(/^\/og\/v1\/([^/]+)\.png$/);
+  if (url.pathname.startsWith('/og/') && !image) return new Response('Not found',{status:404});
+  const id=image ? image[1] : url.searchParams.get('replay');
+  if (!validId(id)) return new Response('Not found',{status:404});
+  const cache=typeof caches !== 'undefined' ? caches.default : null;
+  const cacheKey=new Request(url.origin+'/og/v1/'+id+'.png');
+  if (image && cache) {
+    const hit=await cache.match(cacheKey);
+    if (hit) return request.method === 'HEAD' ? new Response(null,hit) : hit;
+  }
+  const saved=await env.GAME.getByName('public-v1').fetch(
+    new Request(url.origin+'/api/replays/'+id));
+  if (!saved.ok) return new Response('Result not found',{status:saved.status});
+  const card=cardData(await saved.json());
+  if (!card) return new Response('Completed result not found',{status:404});
+  if (image) {
+    const response=new Response(request.method === 'HEAD' ? null : await cardPng(card),{
+      headers:{'Content-Type':'image/png','Cache-Control':'public, max-age=86400, immutable'},
+    });
+    if (cache && request.method === 'GET' && ctx) ctx.waitUntil(cache.put(cacheKey,response.clone()));
+    return response;
+  }
+  const index=await env.ASSETS.fetch(new Request(url.origin+'/'));
+  const html=(await index.text()).replace(/<title>[\s\S]*?<\/title>/,'')
+    .replace('</head>',()=>cardMetadata(card,url.origin,id)+'</head>');
+  return new Response(request.method === 'HEAD' ? null : html,{
+    headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'},
+  });
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     let response;
     if (url.pathname.startsWith('/api/') || url.pathname === '/_store') {
@@ -303,6 +336,9 @@ export default {
         request = new Request(request, {body});
       }
       response = await env.GAME.getByName('public-v1').fetch(request);
+    } else if ((request.method === 'GET' || request.method === 'HEAD') &&
+      (url.pathname.startsWith('/og/') || (url.pathname === '/' && url.searchParams.has('replay')))) {
+      response=await shareResponse(request,env,ctx);
     } else if (url.pathname === '/health') {
       response = Response.json({status:'ok'});
     } else if (request.method === 'GET' || request.method === 'HEAD') {
