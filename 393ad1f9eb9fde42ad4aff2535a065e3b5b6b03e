@@ -1,0 +1,1 @@
+Lessons from the unreproduced sandbox error and browser Load failed reports: correlate requests across layers, distinguish failure stages and resource limits, and retain only bounded diagnostic fields. Verified 243 Python tests and 22 JavaScript tests plus browser reporting. See docs/development/2026-10-28-diagnostics.md and the Cloudflare diagnostic runbook.
