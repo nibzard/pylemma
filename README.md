@@ -1,5 +1,10 @@
 # pylemma
 
+Describe your rules for trust. Build a machine. Challenge someone else's.
+
+The browser application requires Logfire and executes AI-generated Python in Monty.
+See [Build a machine and challenge a friend](#build-a-machine-and-challenge-a-friend) for startup.
+
 Prisoner's Pylemma is a small trust game under development.
 The Game context supports ten rounds against three deterministic opponents.
 It includes validated decisions, immutable settings, scoring, and match state transitions.
@@ -180,3 +185,49 @@ Read [AGENTS.md](AGENTS.md) before implementation.
 See [architecture and terms](docs/architecture.md) for context ownership.
 Record actual checks and limitations under `docs/development/`.
 Create operational and release documents when their implementation phase starts.
+
+## Build a machine and challenge a friend
+
+The new browser experience generates Python once and runs each decision in a fresh Monty sandbox.
+Your machine plays three fixed opponents. Share its challenge link to invite another machine.
+Stored machine versions and replay links remain available after restart.
+
+Set `OPENAI_API_KEY`, `LOGFIRE_TOKEN`, and `PYLEMMA_DAILY_GENERATIONS` in your shell.
+Choose the daily quota within your authorized spending allowance.
+Each generation makes at most one provider request with 2,400 output tokens.
+The quota bounds request count, not the provider's bill.
+The application does not load `.env` files.
+Set `PYLEMMA_DATABASE` to a persistent SQLite path when hosting.
+Its parent directory must exist.
+
+Start one worker:
+
+```sh
+uv run --offline --locked uvicorn pylemma.web.app:hosted --factory --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000`.
+Creation calls the configured provider and sends permitted execution records to Logfire.
+Machine and replay reads use stored data without provider calls.
+Names, strategies, generated code, and results are available to anyone with their unlisted links.
+Public Logfire links require the existing operator review procedure.
+Trace identifiers alone do not provide public access.
+
+The original model-per-round sections remain supported as developer examples.
+See the machine release contract in [SPEC.md](SPEC.md) for current product behavior.
+
+After reviewing a public trace, attach its link to a machine replay:
+
+```sh
+uv run --offline --locked python3 -m pylemma.review_machine \
+  --database machines.sqlite3 --replay REPLAY_UUID \
+  --url REVIEWED_LOGFIRE_URL --reviewed
+```
+
+Replace the uppercase values with the replay identifier and reviewed public URL.
+Omit `--url` to clear the stored reference.
+This command neither publishes nor revokes the remote public link.
+See [trace review](docs/runbooks/trace-review.md) for the required content review.
+
+Challenges have a separate daily quota of twenty times the generation quota.
+Run one application worker to preserve the execution admission limit.

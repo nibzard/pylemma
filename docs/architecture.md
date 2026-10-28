@@ -207,3 +207,22 @@ Trace identifiers indicate local span creation, not delivery or public availabil
 The operator verifies remote content and revocation through the supported Logfire interface.
 Replay reads never follow the stored reference.
 See the [runbook](runbooks/trace-review.md) and [access decision](decisions/003-public-trace-access.md).
+
+## Generated machine application
+
+The machine release contract in `SPEC.md` supersedes the original hosted experience.
+The historical model adapter and match storage remain available.
+
+`machines.py` owns immutable machine contracts, fresh Monty sessions, tournaments, and two-machine execution.
+The host owns observations and scoring. Sandboxed code returns only validated decisions.
+`generator.py` owns the single bounded provider request for a blueprint.
+`machine_store.py` owns short SQLite transactions for machine versions, completed replays, and generation reservations.
+`web/app.py` owns transport validation, admission, hosted startup, and lifecycle cleanup.
+The browser displays server results and creates challenge invitations.
+
+A machine is a named immutable strategy version with generated Python and its source hash.
+A blueprint is the generated source and its short description.
+A tournament runs the fixed trust-v1 opponent set and adds the machine's points.
+A challenge runs two stored machines against each other.
+The machine observation uses `self` and `opponent` for completed choices.
+It excludes the opponent's current decision, source, and strategy.

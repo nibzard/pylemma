@@ -1,12 +1,77 @@
 # pylemma specification
 
 Status: proposed implementation contract.  
-Version: 0.1.0.  
-Date: 2026-10-26.  
+Version: 0.2.0.
+Date: 2026-10-28.
 Product name: **pylemma**.  
 Public subtitle: **Prisoner's Pylemma**.
 
 This file defines the first release. It does not describe an existing implementation.
+
+## Machine release contract
+
+This contract supersedes conflicting behavior in sections 1, 2, 4 through 15, and 17 through 19.
+Those sections describe the original model-per-round implementation and its stored records.
+Documentation requirements in sections 3 and 16 remain active.
+
+### Purpose and current phase
+
+The current phase implements reusable machines, a fixed tournament, challenges, and the browser experience.
+The public promise is: Describe your rules for trust. Build a machine. Challenge someone else's.
+Logfire is required for hosted operation. Monty executes every machine decision.
+
+### Machine creation
+
+A visitor supplies a name and a strategy of at most 1,000 characters.
+The visitor acknowledges that names, strategies, code, and results are available through unlisted links.
+The generator makes one bounded request using the existing fixed provider and model.
+A blueprint contains Python source and a brief description of the implemented rules.
+Source defines `decide(observation)` and returns the existing validated Decision contract.
+The application validates sample histories before running the tournament.
+Sample checks cannot prove that generated code represents visitor intent.
+A stored machine has a new identifier and source hash. Revisions create new machines.
+
+### Execution and scoring
+
+Each decision executes in a fresh Monty session without mounts or host callbacks.
+Observations contain the round, ten scheduled rounds, and completed choices from the participant's perspective.
+Both observations exist before either current choice is computed.
+Host scoring uses the existing pd-v1 matrix. Generated code cannot change scores.
+Memory, execution time, recursion, and host request deadlines bound execution.
+Failures never produce a fabricated choice or completed replay.
+The fixed trust-v1 tournament plays Optimist, Grudge Holder, and Opportunist for ten rounds each.
+Its score adds the machine's points across all three matches. Show combined points and individual match records.
+A challenge runs two immutable machines for ten rounds and stores the completed replay.
+A challenge link invites its recipient to build a machine and challenge the linked version.
+Global rankings, accounts, and automatic optimization remain outside this phase.
+
+### Hosted boundaries
+
+FastAPI serves the browser, creation, machine reads, challenges, and replay reads.
+SQLite stores immutable machines, completed replays, and daily generation reservations.
+Hosted startup requires a model credential, a Logfire token, and a positive daily generation quota.
+One process serializes generation and game execution. Busy requests receive an explicit retry response.
+Challenges have a separate daily quota of twenty times the generation quota.
+Reserve generation allowance before making a provider request. Failed requests consume their reservation.
+The provider client disables retries and bounds request duration and output tokens.
+The quota limits request count; it does not claim to enforce a monetary billing ceiling.
+The operator must select the quota within their authorized spending allowance before deployment.
+No live verification runs without an explicit spending allowance.
+
+### Observability and publication
+
+Trace generation, validation, decisions, rounds, matches, and challenges through Logfire.
+Include source hashes, permitted observations, validated decisions, and completed scores.
+Trace identifiers do not prove successful delivery or public access.
+Export failure does not change game results.
+Public trace publication requires review under the existing trace review procedure.
+The browser must not invent public trace addresses from trace identifiers.
+
+### Acceptance
+
+Offline tests cover scoring, simultaneous observations, fresh sessions, resource failures, validation, storage, and transport behavior.
+Existing checks remain required. Public machine and replay reads must not make provider requests.
+Live generation, export delivery, and reviewed public access need separate configured verification.
 
 ## 1. Purpose
 
