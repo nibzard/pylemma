@@ -1,0 +1,1 @@
+Live preparation fell from 13.054 to 0.712 seconds. Generation took 6.405 seconds, but the cold request took 102.157 seconds overall, with 93.78 seconds outside the application span. Do not claim overall cold-start improvement. Live form has one unchecked consent checkbox and an optional review button. Probe cost estimate USD 0.000122; no initialization provider calls.
