@@ -64,3 +64,12 @@ Final targeted checks passed 45 Python tests, including the new failure-class as
 Commands: `uv run --offline --locked pytest tests/test_machines.py tests/integration/test_telemetry.py` and `node --test tests/web/*.test.mjs`.
 `docker build --network host -t pylemma:deploy .` and the Cloudflare registry push succeeded.
 Image digest: `sha256:0f9ca7f145cc919ef7af83ff1e2c78a0d5e32ca6e654bf1e7b8271578976cf52`.
+
+## Deployment
+
+Commit `5da05bd` and its notes were pushed to `main`.
+Cloudflare deployed version `80a81ace-ba8d-475b-a748-12d5cad0f390` with the pinned image.
+The live progress module matched the local file byte for byte.
+A hosted browser opened an existing player, requested its saved arena entry, and loaded the result successfully.
+The completed request showed the expected stages and stopped the activity indicator. No script errors occurred.
+No model generation request was made during this verification.
