@@ -79,3 +79,33 @@ def test_remote_arena_operations() -> None:
         ]
     finally:
         store.close()
+
+
+def test_build_reference_reaches_atomic_machine_write() -> None:
+    from pylemma.telemetry import request_reference
+
+    calls = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content))
+        return httpx.Response(200, json=True)
+
+    store = RemoteMachineStore(
+        "https://example.test", "synthetic", httpx.MockTransport(respond)
+    )
+    identifier = str(uuid4())
+    token = request_reference.set(identifier)
+    try:
+        store.build_progress("checking")
+        machine = Machine.create("Test", "Cooperate", presets()[0])
+        store.put(machine)
+        assert calls[0] == {
+            "operation": "build_progress",
+            "id": identifier,
+            "stage": "checking",
+        }
+        assert calls[1]["request_id"] == identifier
+        assert calls[1]["id"] == str(machine.id)
+    finally:
+        request_reference.reset(token)
+        store.close()

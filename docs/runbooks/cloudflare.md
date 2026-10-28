@@ -235,3 +235,48 @@ The generator resolves lazy SDK resources and the fixed response schema during a
 This work makes no network request and consumes no generation allowance.
 Compare `request_dispatched` timings after deployment; cold-start time can increase because preparation now precedes application readiness.
 The idle timeout and container size remain unchanged.
+
+
+## Recover a disconnected build
+
+The browser keeps the draft and reference in session storage.
+Use **Check my previous build** after a reload.
+GET /api/builds/{request_id} reads progress without starting the container.
+A completed response contains the saved machine.
+A failed response permits a new explicit attempt.
+An interrupted response preserves the reference because the provider outcome may be unknown.
+Do not repeat a provider call to repair an uncertain transport outcome.
+
+The Worker binds preview builds to X-Request-ID.
+Repeat the same request identifier and body to retrieve progress or the saved player.
+Changed input under that identifier returns HTTP 409.
+Completed and pending builds bypass generation quotas because they do not perform another build.
+Machine storage and reference completion commit atomically.
+
+The compatibility date enables Durable Object pending-work retention after disconnect.
+The Worker retains the bounded build promise and removes the browser abort signal after admission.
+See https://developers.cloudflare.com/durable-objects/api/state/ for the waitUntil lifetime limit.
+Runtime replacement can still interrupt work; durable references preserve recovery.
+
+## Monitor completion, latency, and inspection
+
+Use request references to join Worker and application records.
+Filter build and game submissions separately from status polling.
+
+- game.request records total Worker duration, status, route, and outcome.
+- container.ready records time spent waiting for readiness.
+- build.started and build.saved identify admitted and saved build references.
+- build.progress records actual stages without descriptions or source code.
+- machine.generate records provider timing and token usage.
+- machine.arena records suite_version and successful completion.
+- inspection_click, example_inspection_click, and share_click record result interactions.
+
+Compare distinct build.saved references with distinct build.started references.
+Exclude recent in-flight builds before interpreting the completion rate.
+Compare request latency distributions for cold and warm requests; one probe is not a percentile.
+Count distinct replay references for inspection clicks to avoid counting repeated clicks as separate visitors.
+Review failed or interrupted references before raising quotas or increasing timeouts.
+
+Arena v2 entries use the same ten presets for twenty rounds.
+Do not rank them together with legacy arena or historical tournament totals.
+Changing a fixed policy requires a new suite version.

@@ -1,7 +1,7 @@
 """Immutable machine versions and isolated, bounded game execution."""
 
 from hashlib import sha256
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import Field
@@ -30,6 +30,7 @@ class Machine(Contract):
     blueprint: Blueprint
     source_hash: str
     public_listing: bool = False
+    arena_version: Literal["arena-v1", "arena-v2"] = "arena-v1"
 
     @classmethod
     def create(
@@ -39,6 +40,7 @@ class Machine(Contract):
         blueprint: Blueprint,
         *,
         public_listing: bool = False,
+        arena_version: Literal["arena-v1", "arena-v2"] = "arena-v1",
     ) -> "Machine":
         return cls(
             id=uuid4(),
@@ -46,6 +48,7 @@ class Machine(Contract):
             strategy=strategy,
             blueprint=blueprint,
             public_listing=public_listing,
+            arena_version=arena_version,
             source_hash=sha256(blueprint.code.encode()).hexdigest(),
         )
 
@@ -119,9 +122,15 @@ class Sandbox:
             [],
             [{"self": "cooperate", "opponent": "betray"}],
             [{"self": "betray", "opponent": "cooperate"}] * 9,
+            [{"self": "cooperate", "opponent": "betray"}] * 19,
         ):
             self.decide(
-                blueprint, {"round": len(history) + 1, "rounds": 10, "history": history}
+                blueprint,
+                {
+                    "round": len(history) + 1,
+                    "rounds": 20 if len(history) > 9 else 10,
+                    "history": history,
+                },
             )
 
 
@@ -153,8 +162,12 @@ def presets() -> tuple[Blueprint, ...]:
     )
 
 
-def play(sandbox: Sandbox, left: Blueprint, right: Blueprint) -> dict[str, Any]:
+def play(
+    sandbox: Sandbox, left: Blueprint, right: Blueprint, *, rounds_count: int = 10
+) -> dict[str, Any]:
     """Resolve simultaneous choices from separate, completed histories only."""
+    if rounds_count not in (10, 20):
+        raise ValueError("Use ten or twenty rounds.")
     rounds: list[dict[str, Any]] = []
     totals = [0, 0]
     with span(
@@ -164,12 +177,12 @@ def play(sandbox: Sandbox, left: Blueprint, right: Blueprint) -> dict[str, Any]:
         left_source=left.code,
         right_source=right.code,
     ) as operation:
-        for number in range(1, 11):
+        for number in range(1, rounds_count + 1):
             with span("machine.round", round_number=number) as round_span:
                 observations = [
                     {
                         "round": number,
-                        "rounds": 10,
+                        "rounds": rounds_count,
                         "history": [
                             {
                                 "self": r["choices"][side],
@@ -225,6 +238,30 @@ def arena(
     sandbox: Sandbox, machine: Machine, opponents: list[Machine]
 ) -> dict[str, Any]:
     """Execute a fixed selection. Failed matches never become completed results."""
+    if machine.arena_version == "arena-v2":
+        matches = []
+        for preset in arena_presets():
+            with span("arena.opponent", opponent=preset.summary, preset=True):
+                result = play(sandbox, machine.blueprint, preset, rounds_count=20)
+            matches.append(
+                dict(
+                    opponent=preset.summary,
+                    opponent_id=None,
+                    preset=True,
+                    source_hash=sha256(preset.code.encode()).hexdigest(),
+                    **result,
+                )
+            )
+        total = sum(m["totals"][0] for m in matches)
+        return {
+            "rules_version": "pd-v1",
+            "suite_version": "arena-v2",
+            "rounds_per_match": 20,
+            "matches": matches,
+            "total": total,
+            "points_per_round": total / 200,
+            "combined": sum(m["combined"] for m in matches),
+        }
     selected = opponents[:10]
     if any(not m.public_listing or m.id == machine.id for m in selected):
         raise ValueError("Arena opponents must be other public strategies.")
@@ -266,3 +303,56 @@ def arena(
         "total": sum(m["totals"][0] for m in matches),
         "combined": sum(m["combined"] for m in matches),
     }
+
+
+# Immutable arena-v2 policies. Changing any policy requires a new suite version.
+ARENA_POLICIES = {
+    "The Optimist": "c = 'cooperate'",
+    "The Betrayer": "c = 'betray'",
+    "The Mirror": "c = h[-1]['opponent'] if h else 'cooperate'",
+    "The Second Chance": (
+        "c = 'betray' if len(h) >= 2 and "
+        "all(r['opponent'] == 'betray' for r in h[-2:]) else 'cooperate'"
+    ),
+    "The Grudge Holder": (
+        "c = 'betray' if any(r['opponent'] == 'betray' for r in h) else 'cooperate'"
+    ),
+    "The Switcher": """c = 'cooperate'
+if h:
+    last = h[-1]
+    if last['opponent'] == 'cooperate':
+        c = last['self']
+    else:
+        c = 'betray' if last['self'] == 'cooperate' else 'cooperate'""",
+    "The Alternator": "c = 'cooperate' if n % 2 else 'betray'",
+    "The Prober": (
+        "c = 'betray' if n % 7 == 0 else (h[-1]['opponent'] if h else 'cooperate')"
+    ),
+    "The Skeptic": "c = h[-1]['opponent'] if h else 'betray'",
+    "The Rebuilder": """remaining = 0
+peace = 0
+for r in h:
+    if remaining:
+        remaining -= 1
+        if remaining == 0:
+            peace = 2
+    elif peace:
+        peace -= 1
+    elif r['opponent'] == 'betray':
+        remaining = 2
+c = 'betray' if remaining else 'cooperate'""",
+}
+
+
+def arena_presets() -> tuple[Blueprint, ...]:
+    return tuple(
+        Blueprint(
+            summary=name,
+            code="def decide(observation):\n"
+            "    h = observation['history']\n"
+            "    n = observation['round']\n"
+            + "\n".join("    " + line for line in body.splitlines())
+            + "\n    return {'choice': c, 'stated_reason': 'Fixed arena policy.'}\n",
+        )
+        for name, body in ARENA_POLICIES.items()
+    )

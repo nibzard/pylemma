@@ -182,6 +182,10 @@ def create_app(
     def get_machine(identifier: UUID) -> Machine:
         return machine(identifier)
 
+    async def build_progress(stage: str) -> None:
+        if isinstance(store, RemoteMachineStore):
+            await asyncio.to_thread(store.build_progress, stage)
+
     @app.post("/api/machines", status_code=201)
     async def create(body: Create) -> dict[str, Any]:
         if not body.public_acknowledged:
@@ -202,18 +206,22 @@ def create_app(
             with match_context(telemetry), span("machine.create") as operation:
                 try:
                     operation.set(stage="generation")
+                    await build_progress("generating")
                     blueprint = await builder.generate(body.strategy)
                     operation.set(stage="sample_validation")
+                    await build_progress("checking")
                     await asyncio.to_thread(sandbox.validate, blueprint)
                     result = Machine.create(
                         body.name,
                         body.strategy,
                         blueprint,
                         public_listing=body.public_listing,
+                        arena_version="arena-v2",
                     )
                     if body.preview:
                         operation.set(stage="store_machine")
-                        store.put(result)
+                        await build_progress("saving")
+                        await asyncio.to_thread(store.put, result)
                         operation.set(stage="complete", machine_id=str(result.id))
                         return {"machine": result}
                     trial = await asyncio.to_thread(tournament, sandbox, result)
@@ -309,8 +317,16 @@ def create_app(
             ):
                 try:
                     operation.set(stage="select_opponents")
-                    opponents = store.arena_opponents(player.id)
-                    operation.set(stage="execution", opponent_count=len(opponents))
+                    opponents = (
+                        store.arena_opponents(player.id)
+                        if player.arena_version == "arena-v1"
+                        else []
+                    )
+                    operation.set(
+                        stage="execution",
+                        opponent_count=10,
+                        suite_version=player.arena_version,
+                    )
                     result = await asyncio.to_thread(arena, sandbox, player, opponents)
                     data = {
                         "kind": "arena",

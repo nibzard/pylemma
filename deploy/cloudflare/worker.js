@@ -7,6 +7,7 @@ export class Pylemma extends Container {
   sleepAfter = '5m';
   envVars;
   busy = false;
+  activeBuildId = null;
   constructor(ctx, env) {
     super(ctx, env);
     this.envVars = {
@@ -54,7 +55,14 @@ export class Pylemma extends Container {
     const start = Date.now();
     let response;
     let outcome;
-    try { response = await this.handleRequest(request); }
+    try {
+      const work = this.handleRequest(request);
+      // Preserve a bounded build even if its browser connection closes.
+      if (new URL(request.url).pathname === '/api/machines' && request.method === 'POST') {
+        this.ctx.waitUntil?.(work.catch(()=>{}));
+      }
+      response = await work;
+    }
     catch {
       outcome = 'unhandled_error';
       response = Response.json({detail:'The game server could not respond. Try again shortly.'},{status:503});
@@ -71,6 +79,12 @@ export class Pylemma extends Container {
   }
   async handleRequest(request) {
     const path = new URL(request.url).pathname;
+    const buildMatch = path.match(/^\/api\/builds\/([^/]+)$/);
+    if (request.method === 'GET' && buildMatch) {
+      if (!validId(buildMatch[1])) return Response.json({detail:'Invalid reference.'},{status:422});
+      const job=await operate(this.ctx.storage,{operation:'build_status',id:buildMatch[1]});
+      return job ? await buildStatus(this.ctx.storage,job,false,this.activeBuildId === buildMatch[1]) : Response.json({detail:'Build not found.'},{status:404});
+    }
     if (path === '/_store') {
       if (request.headers.get('Authorization') !== `Bearer ${this.env.STORE_TOKEN}`) {
         return Response.json({detail:'Not found.'}, {status:404});
@@ -78,6 +92,12 @@ export class Pylemma extends Container {
       try {
         const input = await request.json();
         const result = await operate(this.ctx.storage, input);
+        if (input.operation === 'build_progress' && result) {
+          diagnosticLog({event:'build.progress',request_id:input.id,stage:input.stage});
+        }
+        if (input.operation === 'put' && input.kind === 'machine' && validId(input.request_id)) {
+          diagnosticLog({event:'build.saved',request_id:input.request_id,machine_id:input.id});
+        }
         return Response.json(result, {status:result === null ? 404 : 200});
       } catch {
         return Response.json({detail:'Storage operation failed.'}, {status:400});
@@ -142,6 +162,19 @@ export class Pylemma extends Container {
       const saved = await operate(this.ctx.storage,{operation:'arena_entry',id:input.machine_id});
       if (saved) return Response.json(saved,{status:201,headers:{'X-Game-Outcome':'saved_entry'}});
     }
+    let buildInput, fingerprint, buildId;
+    if (path === '/api/machines') {
+      try { buildInput=await request.clone().json(); } catch { /* Normal validation below. */ }
+      if (buildInput?.preview === true) {
+        buildId=request.headers.get('X-Request-ID');
+        fingerprint=await inputFingerprint(buildInput);
+        const existing=await operate(this.ctx.storage,{operation:'build_status',id:buildId});
+        if (existing) {
+          if (existing.fingerprint !== fingerprint) return Response.json({detail:'This reference belongs to a different build.'},{status:409});
+          return buildStatus(this.ctx.storage,existing,true,this.activeBuildId === buildId);
+        }
+      }
+    }
     const lifetime = await this.ctx.storage.get(path === '/api/machines' ?
       'lifetime:generation' : 'lifetime:challenge') || 0;
     if (lifetime >= (path === '/api/machines' ? MAX_GENERATIONS : MAX_CHALLENGES)) {
@@ -182,27 +215,42 @@ export class Pylemma extends Container {
         return Response.json({detail:'Machine not found.'}, {status:404});
       }
     }
+    // Recheck after asynchronous reads; only one execution may enter.
+    if (this.busy) return Response.json({detail:'Another operation is running. Try again shortly.'},{status:429});
     this.busy = true;
+    this.activeBuildId = buildId || null;
     try {
+      if (buildId) {
+        const claim=await operate(this.ctx.storage,{operation:'build_claim',id:buildId,fingerprint});
+        if (!claim.created) {
+          if (claim.job.fingerprint !== fingerprint) return Response.json({detail:'This reference belongs to a different build.'},{status:409});
+          return buildStatus(this.ctx.storage,claim.job,true);
+        }
+        diagnosticLog({event:'build.started',request_id:buildId});
+        request=new Request(request.url,{method:'POST',headers:request.headers,body:JSON.stringify(buildInput)});
+      }
       // Record startup separately from application execution.
       const readyStart = Date.now();
       diagnosticLog({event:'container.wait',request_id:request.headers.get('X-Request-ID'),
         port_ready_timeout_ms:60000,version:this.env.VERSION_METADATA?.id || 'unknown'});
       await this.startAndWaitForPorts({ports:this.defaultPort,
-        cancellationOptions:{abort:request.signal,portReadyTimeoutMS:60000}});
+        cancellationOptions:{abort:buildId ? undefined : request.signal,portReadyTimeoutMS:60000}});
       diagnosticLog({event:"container.ready",request_id:request.headers.get("X-Request-ID"),
         duration_ms:Date.now()-readyStart,version:this.env.VERSION_METADATA?.id || "unknown"});
       const response = await super.fetch(request);
+      if (buildId && !response.ok) await operate(this.ctx.storage,{operation:'build_progress',id:buildId,stage:'failed'});
       if (!(response.headers.get('Content-Type') || '').includes('application/json')) {
         await response.body?.cancel();
+        if (buildId) await operate(this.ctx.storage,{operation:'build_progress',id:buildId,stage:'failed'});
         return Response.json({detail:'The game server is starting. Try again shortly.'}, {status:503,headers:{'X-Game-Outcome':'invalid_container_response'}});
       }
       return response;
     } catch {
+      // An unknown transport outcome stays recoverable. Never repeat generation.
       return Response.json({detail:'The game server connection was interrupted. Try again shortly.'},
         {status:503,headers:{'X-Game-Outcome':'container_connection'}});
     }
-    finally { this.busy = false; }
+    finally { this.busy = false; this.activeBuildId = null; }
   }
 }
 
@@ -211,7 +259,7 @@ export function diagnosticLog(record) {
 }
 
 export function diagnosticRoute(path) {
-  if (/^\/api\/(machines|replays)\/[^/]+$/.test(path)) return path.split('/').slice(0,3).join('/')+'/{id}';
+  if (/^\/api\/(machines|replays|builds)\/[^/]+$/.test(path)) return path.split('/').slice(0,3).join('/')+'/{id}';
   return ['/api/machines','/api/arena','/api/challenges','/api/tournaments','/api/events',
     '/api/diagnostics','/api/leaderboard','/api/games','/_store'].includes(path) ? path : 'unmatched';
 }
@@ -265,3 +313,30 @@ export default {
     return new Response(response.body, {status:response.status, headers});
   }
 };
+
+
+async function inputFingerprint(input) {
+  const normalized={name:input.name,strategy:input.strategy,
+    public_acknowledged:input.public_acknowledged,public_listing:input.public_listing ?? false,
+    preview:input.preview};
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(normalized)));
+  return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+
+async function buildStatus(storage,job,posting=false,finishing=false) {
+  const headers={'Cache-Control':'no-store','X-Game-Outcome':job.stage === 'complete' ? 'build_complete' : 'build_pending'};
+  if (job.stage === 'complete' && finishing) {
+    headers['X-Game-Outcome']='build_pending';
+    return Response.json({stage:'finishing'},{status:posting ? 202 : 200,headers});
+  }
+  if (job.stage === 'complete') {
+    const machine=await operate(storage,{operation:'get',kind:'machine',id:job.machine_id});
+    return Response.json({stage:'complete',machine},{status:posting ? 201 : 200,headers});
+  }
+  const stale=Date.now()-Date.parse(job.started_at) > 180000;
+  const stage=job.stage === 'failed' ? 'failed' : stale ? 'interrupted' : job.stage;
+  if (['failed','interrupted'].includes(stage)) headers['X-Game-Outcome']='build_'+stage;
+  const detail=stage === 'failed' ? 'The build failed. Your description is saved. You can start a new attempt.' :
+    stage === 'interrupted' ? 'This build has not completed. Keep its reference to check again. No automatic retry was made.' : undefined;
+  return Response.json({stage,detail},{status:posting ? 202 : 200,headers});
+}

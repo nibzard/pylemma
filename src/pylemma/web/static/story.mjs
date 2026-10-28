@@ -16,7 +16,7 @@ export function findings(match, names) {
   const result = [];
   const first = rounds.find(r => r.choices.includes('betray'));
   if (!first) {
-    result.push('Both players cooperated in every round. Each earned 30 points.');
+    result.push(`Both players cooperated in every round. Each earned ${rounds.length * 3} points.`);
     return result;
   }
   const firstNames = first.choices.flatMap((choice, side) => choice === 'betray' ? [names[side]] : []);
@@ -51,18 +51,28 @@ export function comparison(total, baseline = REFERENCES[0]) {
 /** Select a factual round for inspection, without assigning intent. */
 export function highlight(match, names) {
   const rounds = match.rounds;
+  let conflict=0;
+  for (const round of rounds) {
+    if (round.choices.every(choice=>choice === 'cooperate')) {
+      if (conflict >= 2) return {round:round.round,recovery:true,
+        text:`Both players returned to cooperation in round ${round.round} after ${conflict} rounds without mutual cooperation.`};
+      conflict=0;
+    } else conflict++;
+  }
   const afterThree = rounds.find((round, index) => round.choices[0] === 'cooperate' &&
     rounds.slice(0,index).filter(r=>r.choices[1] === 'betray').length >= 3);
   if (afterThree) return {round:afterThree.round,
     text:`${names[0]} cooperated in round ${afterThree.round} after at least three earlier betrayals by ${names[1]}.`};
   const first = rounds.find(r=>r.choices.includes('betray'));
   if (first) return {round:first.round, text:findings(match,names)[0]};
-  return {round:1, text:'Both players cooperated in every round. Each earned 30 points.'};
+  return {round:1, text:`Both players cooperated in every round. Each earned ${rounds.length * 3} points.`};
 }
 
 export function shareText(machine, result) {
   const rule = machine.strategy.length > 80 ? machine.strategy.slice(0,77) + '…' : machine.strategy;
-  return `${machine.name}: “${rule}”\n${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'} in Prisoner’s Pylemma.\nCan your strategy do better?`;
+  const format=result.suite_version === 'arena-v2' ?
+    `\n${(result.total / 200).toFixed(2)} points per round against the fixed Arena v2 opponents.` : '';
+  return `${machine.name}: “${rule}”\n${result.total} points against ${result.matches.length} ${result.matches.length === 1 ? 'player' : 'players'} in Prisoner’s Pylemma.${format}\nCan your strategy do better?`;
 }
 
 
@@ -75,4 +85,16 @@ export function inspectionUrl(data, spanId) {
     url.searchParams.set('spanId',spanId);
   }
   return url.href;
+}
+
+
+/** Prefer a recorded recovery over an arbitrary early betrayal. */
+export function featuredDecision(matches,name) {
+  const choices=matches.map(match=>{
+    const selected=highlight(match,[name,match.opponent]);
+    return {...selected,opponent:match.opponent,
+      spanId:match.rounds.find(round=>round.round === selected.round)?.span_id};
+  });
+  return choices.find(choice=>choice.recovery) ||
+    choices.find((choice,index)=>matches[index].rounds.some(round=>round.choices.includes('betray'))) || choices[0];
 }

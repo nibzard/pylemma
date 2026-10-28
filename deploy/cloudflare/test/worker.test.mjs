@@ -8,7 +8,7 @@ source = source.replace("import { Container } from '@cloudflare/containers';",`
 class Container {
   constructor(ctx,env) { this.ctx=ctx; this.env=env; this.starts=0; }
   async startAndWaitForPorts() {}
-  async fetch() { this.starts++; return Response.json({forwarded:true}); }
+  async fetch(request) { this.starts++; return this.forward ? this.forward(request) : Response.json({forwarded:true}); }
 }`);
 for (const file of ['storage.mjs','trace-links.mjs']) {
   source=source.replace(`'./${file}'`,JSON.stringify(new URL('../'+file,import.meta.url).href));
@@ -149,5 +149,82 @@ test('generation admission agrees with the new daily and lifetime limits',async(
   records.set('daily:'+day+':generation',0);
   records.set('lifetime:generation',400);
   assert.equal((await worker.fetch(request('/api/machines',input))).status,429);
+  assert.equal(worker.starts,1);
+});
+
+test('lost build responses recover without starting again or checking quota',async()=>{
+  const records=new Map();
+  const storage={get:async key=>structuredClone(records.get(key)),
+    put:async(key,value)=>records.set(key,structuredClone(value)),
+    transaction:async fn=>fn(storage)};
+  const waits=[];
+  const worker=new Pylemma({storage,waitUntil:work=>waits.push(work)},{});
+  const body={name:'@test',strategy:'Cooperate',public_acknowledged:true,preview:true};
+  const make=(value=body)=>new Request('https://example.test/api/machines',{
+    method:'POST',headers:{'Content-Type':'application/json','X-Request-ID':id},body:JSON.stringify(value)});
+  await worker.fetch(make());
+  assert.equal(worker.starts,1);
+  // The simulated original transport returned without committing a machine.
+  const pending=await worker.fetch(make());
+  assert.equal(pending.status,202);
+  assert.equal(worker.starts,1);
+  const changed=await worker.fetch(make({...body,strategy:'Betray'}));
+  assert.equal(changed.status,409);
+  const job=records.get('build:'+id);
+  records.set('build:'+id,{...job,stage:'complete',machine_id:replay});
+  records.set('machine:'+replay,{id:replay,name:'@test'});
+  records.set('lifetime:generation',400);
+  const recovered=await worker.fetch(make());
+  assert.equal(recovered.status,201);
+  assert.equal((await recovered.json()).machine.id,replay);
+  assert.equal(worker.starts,1);
+  const status=await worker.fetch(request('/api/builds/'+id));
+  const data=await status.json();
+  assert.equal(data.stage,'complete');
+  assert.equal(data.fingerprint,undefined);
+  assert.equal(status.headers.get('Cache-Control'),'no-store');
+  assert.ok(waits.length > 0);
+});
+
+test('interrupted builds keep their references and never restart automatically',async()=>{
+  const worker=new Pylemma({storage:{get:async key=>key === 'build:'+id ?
+    {stage:'generating',started_at:'2000-01-01T00:00:00Z'} : null}},{});
+  const response=await worker.fetch(request('/api/builds/'+id));
+  assert.equal((await response.json()).stage,'interrupted');
+  assert.equal(worker.starts,0);
+});
+
+test('disconnect does not abort admitted work and saved builds wait for the execution slot',async()=>{
+  const {operate}=await import('../storage.mjs');
+  const records=new Map();
+  const storage={get:async key=>structuredClone(records.get(key)),
+    put:async(key,value)=>records.set(key,structuredClone(value)),
+    transaction:async fn=>fn(storage)};
+  const worker=new Pylemma({storage,waitUntil:()=>{}},{});
+  let started,release;
+  const admitted=new Promise(resolve=>{started=resolve;});
+  const finish=new Promise(resolve=>{release=resolve;});
+  let forwarded;
+  worker.forward=async req=>{
+    forwarded=req;
+    await operate(storage,{operation:'put',kind:'machine',id:replay,
+      data:{id:replay,name:'@saved'},request_id:id});
+    started();
+    await finish;
+    return Response.json({machine:{id:replay,name:'@saved'}},{status:201});
+  };
+  const controller=new AbortController();
+  const original=worker.fetch(new Request('https://example.test/api/machines',{
+    method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','X-Request-ID':id},
+    body:JSON.stringify({name:'@saved',strategy:'Cooperate',preview:true,public_acknowledged:true})}));
+  await admitted;
+  controller.abort();
+  assert.equal(forwarded.signal.aborted,false);
+  const pending=await worker.fetch(request('/api/builds/'+id));
+  assert.equal((await pending.json()).stage,'finishing');
+  release();
+  assert.equal((await original).status,201);
+  const complete=await worker.fetch(request('/api/builds/'+id));
+  assert.equal((await complete.json()).machine.id,replay);
   assert.equal(worker.starts,1);
 });

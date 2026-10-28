@@ -112,3 +112,34 @@ test('generation changes preserve challenge limits',async()=>{
   await storage.put('lifetime:challenge',1600);
   assert.equal(await operate(storage,request,new Date('2026-10-29')),false);
 });
+
+test('build claims are atomic and machine recovery commits with the player',async()=>{
+  const storage=new Storage(), id='00000000-0000-0000-0000-000000000099';
+  const request={operation:'build_claim',id,fingerprint:'a'.repeat(64)};
+  const claims=await Promise.all(Array.from({length:8},()=>operate(storage,request)));
+  assert.equal(claims.filter(claim=>claim.created).length,1);
+  await operate(storage,{operation:'build_progress',id,stage:'checking'});
+  await operate(storage,{operation:'build_progress',id,stage:'generating'});
+  assert.equal((await operate(storage,{operation:'build_status',id})).stage,'checking');
+  const player='00000000-0000-0000-0000-000000000098';
+  await operate(storage,{operation:'put',kind:'machine',id:player,data:{name:'@test'},request_id:id});
+  await operate(storage,{operation:'build_progress',id,stage:'failed'});
+  const job=await operate(storage,{operation:'build_status',id});
+  assert.equal(job.stage,'complete');
+  assert.equal(job.machine_id,player);
+  assert.equal((await operate(storage,{operation:'get',kind:'machine',id:player})).name,'@test');
+  assert.equal(await storage.get('lifetime:generation'),undefined);
+});
+
+test('public arena versions validate their own round counts',async()=>{
+  const {publicEntry}=await import('../public-games.mjs');
+  const data={kind:'arena',machine:{id:'x',name:'Test',public_listing:true},
+    result:{suite_version:'arena-v2',rules_version:'pd-v1',total:1000,
+      matches:Array.from({length:10},()=>({rounds:Array(20).fill({})}))}};
+  assert.equal(publicEntry('r',data).rounds_per_match,20);
+  data.result.suite_version='arena-v1';
+  assert.equal(publicEntry('r',data),null);
+  data.result.suite_version='arena-v2';
+  data.result.total=1001;
+  assert.equal(publicEntry('r',data),null);
+});

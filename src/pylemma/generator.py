@@ -17,7 +17,9 @@ from pylemma.telemetry import span
 GENERATION_TIMEOUT = 45.0
 
 PROMPT = """Generate Python code defining decide(observation).
-The observation has round (1..10), rounds (10), and history.
+The observation has round, rounds, and history.
+Arena matches have 20 rounds. Direct challenges have 10 rounds.
+Use observation["rounds"] for the final round; do not assume a fixed match length.
 Each history item has self and opponent choices: cooperate or betray.
 Return a dictionary with choice and stated_reason (1..240 characters).
 Use only Python builtins, functions, loops, and ordinary containers.

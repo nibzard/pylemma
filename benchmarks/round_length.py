@@ -1,16 +1,16 @@
 """Offline experiment; the production round count remains unchanged.
 
 Run inside the deployed image with --network none --cpus .25.
-Use the actual match function with only its two round-count constants replaced
-in memory. No generated players, provider requests, or hosted writes are used.
+Use the actual match function with an explicit round count.
+No generated players, provider requests, or hosted writes are used.
 """
 
-import inspect
 import json
 import statistics
 import sys
 import time
 from contextlib import nullcontext
+from functools import partial
 
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -67,20 +67,10 @@ for r in h:
 c = 'betray' if remaining else 'cooperate'""",
 }
 players = {name: blueprint(name, body) for name, body in strategies.items()}
-source = inspect.getsource(machines.play)
-assert source.count("range(1, 11)") == 1
-assert source.count('"rounds": 10') == 1
 
 
 def match_function(rounds):
-    namespace = vars(machines).copy()
-    exec(
-        source.replace("range(1, 11)", f"range(1, {rounds + 1})").replace(
-            '"rounds": 10', f'"rounds": {rounds}'
-        ),
-        namespace,
-    )
-    return namespace["play"]
+    return partial(machines.play, rounds_count=rounds)
 
 
 tracing = "--telemetry" in sys.argv

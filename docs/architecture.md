@@ -273,7 +273,9 @@ Only the verified public-trace path accepts the narrow `spanId` highlight parame
 
 An arena is one completed set of ten matches for an immutable machine.
 `machines.arena` executes a selected opponent list and fills empty slots with labelled presets.
-The host selects recent distinct public machines with completed games. Preview-only machines are not eligible.
+For legacy arena-v1 players, the host selects recent distinct public machines with completed games.
+Preview-only machines are not eligible for that legacy opponent selection.
+Arena-v2 uses the fixed suite described below.
 `MachineStore` uses a unique machine-to-replay table. The Durable Object uses an equivalent transactional key.
 Saved entries return before execution allowance checks. Reads and retries make no provider request.
 Public arena summaries use completion order without ranks. Historical fixed-suite ranks remain separate.
@@ -323,3 +325,23 @@ The browser receives one completed blueprint after normal stream completion and 
 The hosted generator constructor resolves the SDK chat completion resource and caches the fixed blueprint schema.
 This local preparation completes before the application serves requests and makes no provider call.
 The browser uses one explicit public-entry checkbox and a separate optional review action.
+
+
+## Durable build recovery and arena-v2
+
+The Worker owns build references in the existing Durable Object.
+A SHA-256 input hash binds each reference to one preview build.
+Duplicate references return progress or saved work before checking quota or container availability.
+The application reports generation, validation, and saving stages through authenticated storage calls.
+Saving a machine also commits its build reference in the same transaction.
+Status reads never start the container. They expose neither input hashes nor credentials.
+The browser retains its draft and reference in session storage.
+An uncertain transport outcome does not cause another generation request.
+Runtime interruption can leave an unresolved attempt; the reference remains readable.
+
+New machines declare arena-v2 and face ten immutable presets for twenty rounds.
+Missing versions retain arena-v1. Direct challenges and historical tournaments remain ten-round games.
+The suite version identifies opponent policies and round count.
+Public entries carry their suite version, and the browser derives scores per round.
+Existing public summaries without a suite version display as legacy arena entries.
+Result highlights select recorded recovery rounds without claiming a player's intent.

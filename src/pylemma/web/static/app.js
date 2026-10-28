@@ -1,6 +1,7 @@
+import {buildPlayer, BUILD_STAGES} from './build.mjs';
 import {normalizeHandle} from './handle.mjs';
 import { STAGES, requestStage, requestError, failureReport } from './progress.mjs';
-import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl } from './story.mjs';
+import { REFERENCES, POLICIES, label, findings, outcome, comparison, highlight, shareText, inspectionUrl, featuredDecision } from './story.mjs';
 
 const $ = selector => document.querySelector(selector);
 const status = $('#status');
@@ -17,6 +18,35 @@ let submitting = false;
 let progressTimer = null;
 let progressStarted = 0;
 let progressStage = null;
+let pendingBuild;
+try { pendingBuild=JSON.parse(sessionStorage.getItem('pylemma.build')); } catch {}
+function rememberBuild(value) {
+  pendingBuild=value;
+  try {
+    if (value) sessionStorage.setItem('pylemma.build',JSON.stringify(value));
+    else sessionStorage.removeItem('pylemma.build');
+  } catch {}
+  $('#recover-build').hidden=!value;
+}
+function buildStage(stage) {
+  updateProgress(0);
+  $('#progress-title').textContent=BUILD_STAGES[stage] || 'Checking your build';
+  $('#progress-note').textContent='Progress comes from your saved build reference. You can return to this build after a disconnect.';
+}
+async function createPlayer(body, resume=false) {
+  const same=pendingBuild && JSON.stringify(pendingBuild.body) === JSON.stringify(body);
+  const requestId=same ? pendingBuild.id : crypto.randomUUID();
+  rememberBuild({id:requestId,body});
+  try { sessionStorage.setItem('pylemma.draft',JSON.stringify({name:body.name,strategy:body.strategy})); } catch {}
+  try {
+    const result=await buildPlayer(body,{requestId,onStage:buildStage,start:!resume});
+    rememberBuild(null);
+    return result;
+  } catch (error) {
+    if (error.recoverable === false) rememberBuild(null);
+    throw error;
+  }
+}
 function updateProgress(stage) {
   if (stage === null) return;
   progressStage = stage;
@@ -32,7 +62,7 @@ function updateProgress(stage) {
   }));
   $('#progress-note').textContent = stage === 0 ?
     'The server is generating your code and checking that it can run. This can take a little time.' :
-    stage === 1 ? 'Your saved rules are playing. Each match has ten rounds.' : 'The game is complete. Opening its saved result.';
+    stage === 1 ? 'Your saved rules are playing against the scheduled opponents.' : 'The game is complete. Opening its saved result.';
 }
 function startProgress() {
   progressStarted = Date.now();
@@ -40,7 +70,7 @@ function startProgress() {
   progressTimer = setInterval(()=>{
     const seconds = Math.floor((Date.now()-progressStarted)/1000);
     $('#progress-time').textContent = `${seconds} seconds elapsed`;
-    if (seconds >= 15 && progressStage !== 2) $('#progress-note').textContent =
+    if (seconds >= 15 && progressStage === 1) $('#progress-note').textContent =
       'Still waiting for the server. Keep this tab open. You do not need to submit again.';
   },1000);
 }
@@ -211,7 +241,7 @@ function matchView(match, names, policy) {
   if (policy) card.append(el('p', policy, 'small'));
   card.append(el('p', outcome(match, names)));
   for (const fact of findings(match, names)) card.append(el('p', fact, 'finding'));
-  card.append(el('p', `Together, the players earned ${match.combined} points. Both cooperating in all ten rounds would earn 60.`));
+  card.append(el('p', `Together, the players earned ${match.combined} points. Both cooperating in all ${match.rounds.length} rounds would earn ${match.rounds.length * 6}.`));
   const body = el('div');
   body.append(el('p', 'Earlier rounds are the only history a player can see. Each pair of choices is revealed together.', 'small'));
   for (const round of match.rounds) {
@@ -225,7 +255,7 @@ function matchView(match, names, policy) {
     row.append(details('Reasons returned by the players', reasons));
     body.append(row);
   }
-  card.append(details('See all ten rounds', body));
+  card.append(details('See all '+match.rounds.length+' rounds', body));
   return card;
 }
 function refsView(total) {
@@ -246,7 +276,7 @@ async function previousComparison(data) {
   if (!previousReplay || previousReplay === activeReplay) return;
   try {
     const before = await api('/api/replays/' + encodeURIComponent(previousReplay));
-    if (before.kind !== 'tournament' || before.result.suite_version !== data.result.suite_version ||
+    if (before.kind !== data.kind || before.result.suite_version !== data.result.suite_version ||
         before.result.rules_version !== data.result.rules_version) return;
     const difference = data.result.total - before.result.total;
     const text = difference === 0 ? 'Both versions earned the same score.' :
@@ -266,16 +296,19 @@ function showResult(data) {
     summary.append(el('h1', data.machine.name));
     const score = el('p', String(data.result.total), 'score');
     score.append(el('span', `points across ${data.result.matches.length} matches`));
+    const roundCount=data.result.matches.reduce((sum,match)=>sum+match.rounds.length,0);
+    summary.append(el('p',`${(data.result.total / roundCount).toFixed(2)} points per round`,'lead'));
     summary.append(score, el('p', data.machine.blueprint.summary));
     shared.append(summary);
-    const featured = data.result.matches.find(m=>m.rounds.some(r=>r.choices.includes('betray'))) || data.result.matches[0];
-    const selected = {...highlight(featured,[data.machine.name,featured.opponent]),opponent:featured.opponent};
-    selected.spanId = featured.rounds.find(r=>r.round === selected.round)?.span_id;
+    const selected = featuredDecision(data.result.matches,data.machine.name);
     traceDetails(data, summary, selected);
     if (data.kind === 'arena') {
       const presets = data.result.matches.filter(m=>m.preset).length;
-      summary.append(el('p', `Ten rounds per opponent. ${presets} of the ten opponents are presets.`, 'small'),
-        el('p','Entrants can face different opponents. These scores are not a global ranking.','small'));
+      const fixed=data.result.suite_version === 'arena-v2';
+      summary.append(el('p',fixed ? 'Arena v2: twenty rounds against each of the same ten opponents.' :
+        `Arena v1: ten rounds per opponent. ${presets} of the ten opponents are presets.`,'small'),
+        el('p',fixed ? 'Compare these points per round with other Arena v2 entries.' :
+          'Legacy entries can face different opponents. Compare only matching game formats.','small'));
     }
     if (data.result.suite_version === 'trust-v1' && data.result.rules_version === 'pd-v1') {
       shared.append(refsView(data.result.total));
@@ -287,7 +320,7 @@ function showResult(data) {
       shared.append(matchView(match, [data.machine.name, match.opponent], match.preset === false ? undefined : POLICIES[match.opponent]));
     }
     shared.append(technical(data.machine));
-    if (data.kind === 'tournament') void previousComparison(data);
+    if (data.kind === 'tournament' || data.result.suite_version === 'arena-v2') void previousComparison(data);
   } else {
     activeMachine = null;
     const names = data.machines.map(machine => machine.name);
@@ -322,7 +355,7 @@ function showResult(data) {
 async function saveResult(data, kind) {
   activeReplay = data.replay_id;
   const values = {replay:activeReplay};
-  if (previousReplay && kind === 'tournament') values.compare = previousReplay;
+  if (previousReplay && ['tournament','arena'].includes(kind)) values.compare = previousReplay;
   history.replaceState(null, '', '/?' + new URLSearchParams(values));
   showResult(await api('/api/replays/' + encodeURIComponent(activeReplay)));
   focus(shared);
@@ -336,7 +369,9 @@ function preview(machine) {
   review.replaceChildren(el('p', 'Check before you play', 'eyebrow'), el('h2', machine.name + "'s rules"),
     el('p', machine.blueprint.summary, 'lead'), el('p', 'Does this match what you meant? Check the summary and change your description if it does not.'));
   if (target) review.append(el('p', 'Your player will face ' + target.name + ' for ten rounds.'));
-  else review.append(el('p', 'Your player faces ten recent public players. Presets fill any empty slots.'));
+  else review.append(el('p', machine.arena_version === 'arena-v2' ?
+    'Your player faces the same ten fixed opponents for twenty rounds each.' :
+    'This legacy player faces ten recent public players for ten rounds each.'));
   const actions = el('div', undefined, 'actions');
   const confirm = button(target ? 'Use these rules and challenge' : 'Use these rules and play', () => run(confirm, async () => {
     if (target) {
@@ -385,7 +420,7 @@ async function leaderboard() {
   shared.append(actions);
   shared.append(el('p', all ?
     'Completed public arenas, tournaments, and challenges, newest first.' :
-    'One result per strategy, newest first. Entrants can face different opponents. These scores are not a global ranking.'));
+    'One result per strategy, newest first. Arena v2 entries face the same opponents. Legacy entries use a different format.'));
   shared.append(el('p', 'Only players that permit public listing appear here. Existing unlisted games stay unlisted.', 'small'));
   message('Loading public games…');
   const data = await api(`${all ? '/api/games' : '/api/arena'}?offset=${offset}&limit=20`);
@@ -400,18 +435,18 @@ async function leaderboard() {
     box.setAttribute('role', 'region');
     box.setAttribute('aria-label', 'Scrollable table of public games');
     const table = el('table', undefined, 'board');
-    table.append(el('caption', all ? 'All completed public games' : 'Recent arena results · arena-v1 · pd-v1'));
+    table.append(el('caption', all ? 'All completed public games' : 'Recent arena results · compare matching formats'));
     const head = el('tr');
-    for (const title of all ? ['Game', 'Players', 'Points', 'Played', 'Replay'] : ['Game', 'Player', 'Points', 'Replay', 'Challenge']) {
+    for (const title of all ? ['Game', 'Players', 'Points', 'Played', 'Replay'] : ['Game', 'Player', 'Points per round', 'Replay', 'Challenge']) {
       const th = el('th', title); th.scope = 'col'; head.append(th);
     }
     const thead = el('thead'); thead.append(head); table.append(thead);
     const body = el('tbody');
     for (const entry of data.entries) {
       const row = el('tr');
-      row.append(el('td', all ? ({arena:'Arena',tournament:'Tournament',challenge:'Challenge'}[entry.kind]) : 'Arena'),
+      row.append(el('td', all ? ({arena:'Arena',tournament:'Tournament',challenge:'Challenge'}[entry.kind]) : entry.suite_version === 'arena-v2' ? 'Arena v2' : 'Arena v1'),
         el('td', entry.players.map(player => player.name).join(' vs ')),
-        el('td', entry.scores.join(' / ')));
+        el('td', all ? entry.scores.join(' / ') : (entry.scores[0] / (entry.suite_version === 'arena-v2' ? 200 : 100)).toFixed(2)));
       if (all) {
         const played = el('td');
         const stamp = entry.created_at ? new Date(entry.created_at) : null;
@@ -466,7 +501,7 @@ $('#builder').onsubmit = event => {
   const reviewFirst = submit.dataset.preview === 'true';
   $('#name').value = normalizeHandle($('#name').value);
   void run(submit, async () => {
-    const data = await api('/api/machines', {
+    const data = await createPlayer({
       name:$('#name').value, strategy:$('#strategy').value,
       public_acknowledged:$('#ack').checked, public_listing:$('#ack').checked, preview:true,
     });
@@ -491,6 +526,19 @@ $('#builder').onsubmit = event => {
     }
   }, 'Building your player and checking its rules…');
 };
+for (const field of ['#name','#strategy']) $(field).addEventListener('input',()=>{
+  try { sessionStorage.setItem('pylemma.draft',JSON.stringify({name:$('#name').value,strategy:$('#strategy').value})); } catch {}
+});
+try {
+  const draft=JSON.parse(sessionStorage.getItem('pylemma.draft'));
+  if (draft) { $('#name').value=draft.name || ''; $('#strategy').value=draft.strategy || ''; }
+} catch {}
+rememberBuild(pendingBuild);
+$('#recover-build').onclick=()=>run($('#recover-build'),async()=>{
+  const data=await createPlayer(pendingBuild.body,true);
+  history.replaceState(null,'','/?'+new URLSearchParams({player:data.machine.id,...(target ? {challenge:target.id} : {})}));
+  preview(data.machine);
+},'Checking the saved build reference…');
 showDemo();
 (async () => {
   try {

@@ -17,7 +17,7 @@
     <section id="intro" class="intro">
       <p class="eyebrow">One rule. Ten opponents.</p>
       <h1>Write one rule.<br>Enter the arena.</h1>
-      <p class="lead">Describe your strategy. Your player faces ten recent public players, with presets filling empty slots.</p>
+      <p class="lead">Describe your strategy. Face the same ten opponents for twenty rounds each.</p>
       <p>Cooperate together for 3 points each. Betray a cooperator for 5. Betray together for 1.</p>
       <div class="actions">
         <button type="button" class="primary" id="start">Create your player <span aria-hidden="true">→</span></button>
@@ -33,7 +33,7 @@
         <p class="eyebrow">Learn the choices</p>
         <h2 id="lesson-title">Trust can pay. Betrayal can too.</h2>
         <p>Each choice changes both scores. You cannot see the other player's choice until both have chosen.</p>
-        <p>Earn as many points as you can over ten rounds. Your player remembers the earlier choices.</p>
+        <p>Earn as many points as you can over twenty rounds per arena opponent. Your player remembers the earlier choices.</p>
         <details>
           <summary>See all four outcomes</summary>
           <table>
@@ -67,11 +67,12 @@
         <div class="examples" aria-label="Example strategies">
           <button type="button" data-example="Cooperate first. Then copy the opponent's previous choice.">Start friendly, then copy</button>
           <button type="button" data-example="Cooperate until the opponent betrays twice. Then always betray.">Forgive one betrayal</button>
-          <button type="button" data-example="Always betray.">Always betray</button>
+          <button type="button" data-example="Cooperate first. After a betrayal, betray for two rounds, then cooperate for two rounds. Ignore new betrayals during those four rounds, then start watching again.">Punish, then rebuild trust</button>
         </div>
+        <button type="button" id="recover-build" hidden>Check my previous build</button>
         <label for="name">Your X (Twitter) handle <span class="small" id="name-hint">Shown with your player and results.</span></label>
         <input id="name" maxlength="60" required placeholder="@yourhandle" autocomplete="nickname" aria-describedby="name-hint">
-        <label class="notice"><input id="ack" type="checkbox" required><span>Make my player's name, rules, code, and results public. Other arena players can face this strategy.</span></label>
+        <label class="notice"><input id="ack" type="checkbox" required><span>Make my player's name, rules, code, and results public. Other players can challenge this strategy.</span></label>
         <p class="small">Do not enter private information.</p>
         <div class="actions">
           <button class="primary" type="submit">Enter the arena <span aria-hidden="true">→</span></button>

@@ -33,6 +33,18 @@ The application validates sample histories before running the tournament.
 Sample checks cannot prove that generated code represents visitor intent.
 A stored machine has a new identifier and source hash. Revisions create new machines.
 
+### Production recovery and arena-v2
+
+New browser builds use a durable request reference bound to their input.
+Retries of that reference must not repeat generation or quota reservations.
+The public status endpoint reports actual stages and recovers a saved player.
+New players declare arena-v2 and face ten fixed opponents for twenty rounds.
+Missing player versions retain arena-v1 and its original opponent selection.
+Historical tournaments and direct challenges retain ten rounds.
+All comparisons state their suite version and points per round.
+Saved replays remain immutable and render their recorded round counts.
+These rules supersede conflicting round counts and opponent selection below.
+
 ### Execution and scoring
 
 Each decision executes in a fresh Monty session without mounts or host callbacks.

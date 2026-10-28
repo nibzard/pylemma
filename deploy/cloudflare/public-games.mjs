@@ -2,11 +2,12 @@
 export function publicEntry(id, data) {
   const result = data.result || {};
   let machines, scores;
+  const roundsPerMatch=data.kind === 'arena' && result.suite_version === 'arena-v2' ? 20 : 10;
   if (['tournament','arena'].includes(data.kind)) {
     machines = [data.machine || {}];
     if (!Array.isArray(result.matches) || result.matches.length !== (data.kind === 'arena' ? 10 : 3) ||
-        result.matches.some(match => match.rounds?.length !== 10) ||
-        result.rules_version !== 'pd-v1' || result.suite_version !== (data.kind === 'arena' ? 'arena-v1' : 'trust-v1')) return null;
+        result.matches.some(match => match.rounds?.length !== roundsPerMatch) ||
+        result.rules_version !== 'pd-v1' || !(data.kind === 'arena' ? ['arena-v1','arena-v2'] : ['trust-v1']).includes(result.suite_version)) return null;
     scores = [result.total];
   } else if (data.kind === 'challenge') {
     machines = data.machines || [];
@@ -14,10 +15,10 @@ export function publicEntry(id, data) {
     scores = result.totals;
   } else return null;
   if (machines.some(machine => machine.public_listing !== true) ||
-      scores.some(score => !Number.isInteger(score) || score < 0 || score > (data.kind === 'arena' ? 500 : 150))) return null;
+      scores.some(score => !Number.isInteger(score) || score < 0 || score > (data.kind === 'arena' ? 50 * roundsPerMatch : 150))) return null;
   return {replay_id:id, kind:data.kind,
     players:machines.map(machine => ({id:machine.id, name:machine.name})),
-    scores, created_at:data.created_at ?? null};
+    scores, suite_version:result.suite_version ?? null, rounds_per_match:roundsPerMatch, created_at:data.created_at ?? null};
 }
 
 export function publicPage(entries, ranked, offset, limit) {

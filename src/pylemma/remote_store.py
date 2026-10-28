@@ -33,7 +33,10 @@ class RemoteMachineStore:
         headers = {"X-Request-ID": identifier} if identifier else {}
         with span("storage.request", operation=operation) as attempt:
             response = self.client.post(
-                "/_store", json={"operation": operation, **values}, headers=headers
+                "/_store",
+                json={"operation": operation, **values},
+                headers=headers,
+                timeout=2 if operation == "build_progress" else 10,
             )
             attempt.set(status=response.status_code)
             if response.status_code == 404 and operation == "arena_entry":
@@ -43,6 +46,15 @@ class RemoteMachineStore:
                 raise KeyError(values.get("id"))
             response.raise_for_status()
             return response.json()
+
+    def build_progress(self, stage: str) -> None:
+        """Stage reporting must not interrupt generation or saving."""
+        identifier = request_reference.get()
+        if identifier:
+            try:
+                self.call("build_progress", id=identifier, stage=stage)
+            except Exception:
+                pass
 
     def reserve(self, daily_limit: int) -> bool:
         return bool(self.call("reserve", kind="generation", limit=daily_limit))
@@ -56,6 +68,7 @@ class RemoteMachineStore:
             kind="machine",
             id=str(machine.id),
             data=machine.model_dump(mode="json"),
+            request_id=request_reference.get(),
         )
 
     def get(self, identifier: UUID) -> Machine:

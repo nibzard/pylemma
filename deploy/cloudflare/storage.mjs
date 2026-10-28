@@ -11,6 +11,32 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validId = id => typeof id === 'string' && UUID.test(id);
 
 export async function operate(storage, input, now = new Date()) {
+  if (input.operation === 'build_status') {
+    if (!validId(input.id)) throw new Error('Invalid build identifier.');
+    return await storage.get('build:'+input.id) ?? null;
+  }
+  if (input.operation === 'build_claim') {
+    if (!validId(input.id) || !/^[a-f0-9]{64}$/.test(input.fingerprint || '')) throw new Error('Invalid build.');
+    return storage.transaction(async tx => {
+      const key='build:'+input.id;
+      const existing=await tx.get(key);
+      if (existing) return {created:false,job:existing};
+      const job={fingerprint:input.fingerprint,stage:'starting',started_at:now.toISOString(),updated_at:now.toISOString()};
+      await tx.put(key,job);
+      return {created:true,job};
+    });
+  }
+  if (input.operation === 'build_progress') {
+    if (!validId(input.id) || !['starting','generating','checking','saving','failed'].includes(input.stage)) throw new Error('Invalid build stage.');
+    return storage.transaction(async tx => {
+      const key='build:'+input.id, job=await tx.get(key);
+      if (!job || job.stage === 'complete' || job.stage === 'failed') return false;
+      const order=['starting','generating','checking','saving','failed'];
+      if (order.indexOf(input.stage) < order.indexOf(job.stage)) return false;
+      await tx.put(key,{...job,stage:input.stage,updated_at:now.toISOString()});
+      return true;
+    });
+  }
   if (input.operation === 'arena_entry') {
     if (!validId(input.id)) throw new Error('Invalid identifier.');
     const replayId = await storage.get('arena:'+input.id);
@@ -79,6 +105,12 @@ export async function operate(storage, input, now = new Date()) {
         await tx.put('arena:'+machineId,input.id);
       }
       await tx.put(key, input.data);
+      if (input.kind === 'machine' && validId(input.request_id)) {
+        const buildKey='build:'+input.request_id, job=await tx.get(buildKey);
+        if (job && job.stage !== 'complete') {
+          await tx.put(buildKey,{...job,stage:'complete',machine_id:input.id,updated_at:now.toISOString()});
+        }
+      }
       if (input.kind === 'replay') {
         const summary = publicEntry(input.id, input.data);
         if (summary) await tx.put('public:'+input.id, summary);

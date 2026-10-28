@@ -91,7 +91,8 @@ def test_entry_retry_is_saved_and_unlisted_stays_private(tmp_path: Path) -> None
         recent = client.get("/api/arena").json()
         assert recent["total"] == 1
         assert "rank" not in recent["entries"][0]
-        assert recent["entries"][0]["scores"] == [273]
+        assert recent["entries"][0]["scores"] == [501]
+        assert recent["entries"][0]["suite_version"] == "arena-v2"
         assert client.get("/api/leaderboard").json()["total"] == 0
         assert builder.calls == 2
         assert [

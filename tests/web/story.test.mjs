@@ -61,3 +61,18 @@ test('inspection highlights a recorded span only on a reviewed public trace', as
   assert.equal(inspectionUrl({logfire_url:publicUrl,logfire_access:'public'},'invalid'), publicUrl);
   assert.equal(inspectionUrl({},'1234567890abcdef'),null);
 });
+
+test('highlights a recovery across matches and uses recorded round counts',async()=>{
+  const {featuredDecision}=await import('../../src/pylemma/web/static/story.mjs');
+  const recovery=match([...Array(6).fill(['cooperate','cooperate']),
+    ...Array(4).fill(['betray','betray']),...Array(10).fill(['cooperate','cooperate'])]);
+  recovery.opponent='Prober'; recovery.rounds[10].span_id='1234567890abcdef';
+  const peaceful=match(Array(20).fill(['cooperate','cooperate']));
+  peaceful.opponent='Friendly';
+  const selected=featuredDecision([peaceful,recovery],'Visitor');
+  assert.equal(selected.round,11);
+  assert.equal(selected.opponent,'Prober');
+  assert.equal(selected.spanId,'1234567890abcdef');
+  assert.match(selected.text,/returned to cooperation/);
+  assert.match(findings(peaceful,['A','B'])[0],/60 points/);
+});
