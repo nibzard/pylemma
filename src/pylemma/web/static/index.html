@@ -65,12 +65,12 @@
         <p class="hint" id="strategy-hint">Describe when it should cooperate, betray, or forgive.</p>
         <textarea id="strategy" aria-describedby="strategy-hint" maxlength="1000" required rows="4" placeholder="Cooperate first. Forgive one betrayal. After the second, always betray."></textarea>
         <div class="examples" aria-label="Example strategies">
-          <button type="button" data-name="The mirror" data-example="Cooperate first. Then copy the opponent's previous choice.">Start friendly, then copy</button>
-          <button type="button" data-name="The second chance" data-example="Cooperate until the opponent betrays twice. Then always betray.">Forgive one betrayal</button>
-          <button type="button" data-name="Trust nobody" data-example="Always betray.">Always betray</button>
+          <button type="button" data-example="Cooperate first. Then copy the opponent's previous choice.">Start friendly, then copy</button>
+          <button type="button" data-example="Cooperate until the opponent betrays twice. Then always betray.">Forgive one betrayal</button>
+          <button type="button" data-example="Always betray.">Always betray</button>
         </div>
-        <label for="name">Player name <span class="small">You can change this.</span></label>
-        <input id="name" maxlength="60" required value="The second chance" autocomplete="off">
+        <label for="name">Your X (Twitter) handle <span class="small" id="name-hint">Shown with your player and results.</span></label>
+        <input id="name" maxlength="60" required placeholder="@yourhandle" autocomplete="nickname" aria-describedby="name-hint">
         <label class="notice"><input id="ack" type="checkbox" required><span>Make my player's name, rules, code, and results public. Other arena players can face this strategy.</span></label>
         <p class="small">Do not enter private information.</p>
         <div class="actions">

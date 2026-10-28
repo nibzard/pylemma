@@ -454,7 +454,7 @@ $('#help').onclick = showLesson;
 $('#try-demo').onclick = showLesson;
 $('#start').onclick = () => showBuilder();
 for (const example of document.querySelectorAll('[data-example]')) {
-  example.onclick = () => { $('#strategy').value = example.dataset.example; $('#name').value = example.dataset.name; };
+  example.onclick = () => { $('#strategy').value = example.dataset.example; };
 }
 $('#builder').onsubmit = event => {
   event.preventDefault();
